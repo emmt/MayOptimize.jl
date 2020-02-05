@@ -8,13 +8,14 @@ When writing high performance [Julia][julia-url] code, you may want to keep
 a reference code that perform bound-checking, another version that assumes
 valid indices (and thus avoid bound-checking) and perhaps a more heavily
 optimized version that requires vectorization of some loops.  The
-**ConditionallyOptimize** package let you have the 3 variants available
-with a single version of the code.
+[ConditionallyOptimize][repository-url] package let you have the 3 variants
+available with a *single* version of the code.
 
 
-## Example
+## Documentation
 
-This is demonstrated by the following short example:
+The usage of [ConditionallyOptimize][repository-url] is summarized in the
+following short example:
 
 ```julia
 using ConditionallyOptimize
@@ -51,14 +52,14 @@ parameter `P` which is one of:
   vectorization.
 
 A block of code provided to the `@may_assume_inbounds` macro will be
-complied with bound-checking (and thus no vectorization) if
+compiled with bound-checking (and thus no vectorization) if
 `P` is `Debug` and without bound-checking (as if `@inbounds` was specified)
 if `P` is `InBounds` or `Vectorize`.
 
-A block of code provided to the `@may_vectorize` macro will be complied
+A block of code provided to the `@may_vectorize` macro will be compiled
 with bound-checking and no vectorization if `P` is `Debug`, with no
 bound-checking if `P` is `InBounds` (as if `@inbounds` was specified) and
-with no bound-checking and vectorization if `P` is `Vectorize` (as if bith
+with no bound-checking and vectorization if `P` is `Vectorize` (as if both
 `@inbounds` and `@simd` were specified).
 
 Which version of `foo!` is called is decided by Julia method dispatcher
@@ -76,7 +77,8 @@ calling
 foo!(InBounds, x)
 ```
 
-executes a version that avoids bound checking (in the 2 loops) and finally:
+executes a version that avoids bound checking (in the 2 loops) and finally
+calling:
 
 ```
 foo!(Vectorize, x)
@@ -98,14 +100,16 @@ and decide later to change the default optimization level.
 
 ## Installation
 
-In Julia, hit the `]` key to switch to the package
-manager REPL (you should get a `... pkg>` prompt) and type:
+In Julia, hit the `]` key to switch to the package manager REPL (you should
+get a `... pkg>` prompt) and type:
 
 ```julia
 add https://github.com/emmt/ConditionallyOptimize.jl
 ```
 
 No other packages are needed.
+
+[repository-url]:  https://github.com/emmt/ConditionallyOptimize.jl
 
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [doc-dev-url]: https://emmt.github.io/ConditionallyOptimize.jl/dev
