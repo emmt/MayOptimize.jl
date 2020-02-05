@@ -20,6 +20,6 @@ matrix:
 notifications:
   email: false
 
-# codecov: true
+codecov: true
 
-# coveralls: true
+coveralls: true
