@@ -1,12 +1,22 @@
 module ConditionallyOptimizeTests
 
-using Test, LinearAlgebra
+using Test, LinearAlgebra, BenchmarkTools
 using ConditionallyOptimize
+
+# This version is to check @may_assume_inbounds.
+function vsum1(::Type{P},
+               x::AbstractVector{T}) where {T<:AbstractFloat,P<:OptimLevel}
+    s = zero(T)
+    @may_assume_inbounds P for i in eachindex(x)
+        s += x[i]
+    end
+    return s
+end
 
 function vsum(::Type{P},
               x::AbstractVector{T}) where {T<:AbstractFloat,P<:OptimLevel}
     s = zero(T)
-    @may_assume_inbounds P for i in eachindex(x)
+    @may_vectorize P for i in eachindex(x)
         s += x[i]
     end
     return s
@@ -28,6 +38,9 @@ dims = (10_000,)
     for T in (Float32, Float64)
         x = rand(T, dims)
         y = rand(T, dims)
+        @test vsum1(Debug, x) ≈ sum(x)
+        @test vsum1(InBounds, x) ≈ sum(x)
+        @test vsum1(Vectorize, x) ≈ sum(x)
         @test vsum(Debug, x) ≈ sum(x)
         @test vsum(InBounds, x) ≈ sum(x)
         @test vsum(Vectorize, x) ≈ sum(x)
@@ -37,24 +50,26 @@ dims = (10_000,)
     end
 end
 
-# These are is not real benchmarks.
+ops = ((:Debug, "----"),
+       (:InBounds, "-"),
+       (:Vectorize, ""))
 for T in (Float32, Float64)
     x = rand(T, dims)
     y = rand(T, dims)
     println()
     println("Tests for T=$T and $(length(x)) elements:")
-    println(" - Time for `sum(x)`: ")
-    @time sum(x)
-    for P in (:Debug, :InBounds, :Vectorize)
-        println(" - Time for `vsum($P,x)`: ")
-        @eval @time vsum($P, $x)
+    print(" - Time for `sum(x)` --------------> ")
+    @btime sum($x)
+    for (P, str) in ops
+        print(" - Time for `vsum($P,x)` ", str, "---> ")
+        @btime vsum($P, $x)
     end
     println()
-    println(" - Time for `dot(x,y)`: ")
-    @time dot(x, y)
-    for P in (:Debug, :InBounds, :Vectorize)
-        println(" - Time for `vdot($P,x,y)`: ")
-        @eval @time vdot($P, $x, $y)
+    print(" - Time for `dot(x,y)` --------------> ")
+    @btime dot($x, $y)
+    for (P, str) in ops
+        print(" - Time for `vdot($P,x,y)` ", str, "---> ")
+        @btime vdot($P, $x, $y)
     end
 end
 
