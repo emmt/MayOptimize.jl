@@ -1,0 +1,14 @@
+name = "ConditionallyOptimize"
+uuid = "049513e6-5a5e-4281-9d48-334ebac8954e"
+authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.0, 1.1, 1.2, 1.3"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[targets]
+test = ["Test", "LinearAlgebra"]
