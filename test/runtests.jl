@@ -1,6 +1,6 @@
 module ConditionallyOptimizeTests
 
-using Test, Random, LinearAlgebra
+using Test, LinearAlgebra
 using ConditionallyOptimize
 
 function vsum(::Type{P},
