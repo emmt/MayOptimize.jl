@@ -73,15 +73,20 @@ execute a version of the code that avoids bound-checking.
 See [`@may_vectorize`], [`OptimLevel`].
 
 """
-macro may_assume_inbounds(opt, blk)
-    code = quote
+macro may_assume_inbounds(P, blk)
+    # See comments in `@may_vectorize`.
+    opt = esc(:($P))
+    blk0 = esc(:($blk))
+    blk1 = esc(:(@inbounds $blk))
+    quote
         if $opt <: InBounds
-            @inbounds $blk
+            $blk1
+        elseif $opt <: Debug
+            $blk0
         else
-            $blk
+            error("argument `P` of macro `@may_assume_inbounds` is not a valid optimization level")
         end
     end
-    esc(code)
 end
 
 """
@@ -127,17 +132,29 @@ bound-checking and requires vectorization.
 See [`@may_assume_inbounds`], [`OptimLevel`].
 
 """
-macro may_vectorize(opt, blk)
-    code = quote
+macro may_vectorize(P, blk)
+    # Type to compare `P` with is to be interpreted in this module context
+    # and thus must not be escaped.  But `opt` and `blk` must be escaped.
+    # I empirically found that `esc(:(@macro1 @macro2 ... $expr))` was the
+    # correct way to escape expression `expr`, possibly preceded by some
+    # other macro calls; the alternative `:(esc($expr))` works for all
+    # expressions below but not for the one with `@simd` because this macro
+    # expects a `for` loop.
+    opt = esc(:($P))
+    blk0 = esc(:($blk))
+    blk1 = esc(:(@inbounds $blk))
+    blk2 = esc(:(@inbounds @simd $blk))
+    quote
         if $opt <: Vectorize
-            @inbounds @simd $blk
+            $blk2
         elseif $opt <: InBounds
-            @inbounds $blk
+            $blk1
+        elseif $opt <: Debug
+            $blk0
         else
-            $blk
+            error("argument `P` of macro `@may_vectorize` is not a valid optimization level")
         end
     end
-    esc(code)
 end
 
 end # module
