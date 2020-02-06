@@ -40,31 +40,32 @@ parameter `P` and an expression or a block of code (the 2nd argument must
 be a simple `for` loop for the `@may_vectorize` macro).
 
 How is compiled the expression or the block of code is determined by the
-parameter `P` which is one of:
+type parameter `P`:
 
-- `Debug` for debugging or reference code that performs bound-checking and
-  no vectorization.
+- `P <: Debug` for debugging or reference code that performs bound-checking
+  and no vectorization.
 
-- `InBounds` for code that assumes valid indices and thus avoids
+- `P <: InBounds` for code that assumes valid indices and thus avoids
   bound-checking.
 
-- `Vectorize` for code that assumes valid indices and requires
+- `P <: Vectorize` for code that assumes valid indices and requires
   vectorization.
 
 A block of code provided to the `@may_assume_inbounds` macro will be
-compiled with bound-checking (and thus no vectorization) if
-`P` is `Debug` and without bound-checking (as if `@inbounds` was specified)
-if `P` is `InBounds` or `Vectorize`.
+compiled with bound-checking (and thus no vectorization) if `P <: Debug`
+and without bound-checking (as if `@inbounds` was specified) if
+`P <: InBounds`.  Since `Vectorize <: InBounds`, specifying `Vectorize`
+in `@may_assume_inbounds` also avoid bound-checking.
 
 A block of code provided to the `@may_vectorize` macro will be compiled
-with bound-checking and no vectorization if `P` is `Debug`, with no
-bound-checking if `P` is `InBounds` (as if `@inbounds` was specified) and
-with no bound-checking and vectorization if `P` is `Vectorize` (as if both
+with bound-checking and no vectorization if `P <: Debug`, with no
+bound-checking if `P <: InBounds` (as if `@inbounds` was specified) and
+with no bound-checking and vectorization if `P <: Vectorize` (as if both
 `@inbounds` and `@simd` were specified).
 
-Which version of `foo!` is called is decided by Julia method dispatcher
-according to the abstract types `Debug`, `InBounds` or `Vectorize` exported
-by `ConditionallyOptimize`.  Calling:
+Hence which version of `foo!` is called is decided by Julia method
+dispatcher according to the abstract types `Debug`, `InBounds` or
+`Vectorize` exported by `ConditionallyOptimize`.  Calling:
 
 ```
 foo!(Debug, x)
