@@ -51,8 +51,6 @@ type parameter `P`:
 - `P <: Vectorize` for code that assumes valid indices and requires
   vectorization.
 
-- `UseBLAS` to use BLAS implementation if available, to vectorize otherwise.
-
 A block of code provided to the `@may_assume_inbounds` macro will be
 compiled with bound-checking (and thus no vectorization) if `P <: Debug`
 and without bound-checking (as if `@inbounds` was specified) if
@@ -69,21 +67,21 @@ Hence which version of `foo!` is called is decided by Julia method
 dispatcher according to the abstract types `Debug`, `InBounds` or
 `Vectorize` exported by `ConditionallyOptimize`.  Calling:
 
-```
+```julia
 foo!(Debug, x)
 ```
 
 executes a version that checks bounds and does no vectorization, while
 calling
 
-```
+```julia
 foo!(InBounds, x)
 ```
 
 executes a version that avoids bound checking (in the 2 loops) and finally
 calling:
 
-```
+```julia
 foo!(Vectorize, x)
 ```
 executes a version that avoids bound checking (in the 2 loops) and vectorizes

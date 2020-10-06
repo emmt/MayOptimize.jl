@@ -5,7 +5,6 @@ export
     InBounds,
     OptimLevel,
     Vectorize,
-    UseBLAS,
     @may_assume_inbounds,
     @may_vectorize
 
@@ -22,8 +21,6 @@ implemented by the package *ConditionallyOptimize*.  Derived types are:
 
 - `Vectorize` for code that assumes valid indices and requires vectorization.
 
-- `UseBLAS` to use BLAS implementation if available, to vectorize otherwise.
-
 See macros [`@may_assume_inbounds`] and [`@may_vectorize`] for examples.
 
 """
@@ -31,11 +28,9 @@ abstract type OptimLevel end
 abstract type Debug     <: OptimLevel end # reference code for debugging
 abstract type InBounds  <: OptimLevel end # assume in-bounds
 abstract type Vectorize <: InBounds   end # to vectorize (also assume in-bounds)
-abstract type UseBLAS   <: Vectorize  end
 @doc @doc(OptimLevel) Debug
 @doc @doc(OptimLevel) InBounds
 @doc @doc(OptimLevel) Vectorize
-@doc @doc(OptimLevel) UseBLAS
 
 """
 
