@@ -5,23 +5,24 @@ export
     InBounds,
     OptimLevel,
     Vectorize,
+    UseBLAS,
     @may_assume_inbounds,
     @may_vectorize
 
 """
 
-`OptimLevel` is the abstract parent type for the different optimization
-levels implemented by the package *ConditionallyOptimize*.  Derived
-types are:
+`OptimLevel` is the abstract parent type for the different optimization levels
+implemented by the package *ConditionallyOptimize*.  Derived types are:
 
-- `Debug` for debugging or reference code that performs bound-checking and
-  no vectorization.
+- `Debug` for debugging or reference code that performs bound-checking and no
+  vectorization.
 
 - `InBounds` for code that assumes valid indices and thus avoids
   bound-checking.
 
-- `Vectorize` for code that assumes valid indices and requires
-  vectorization.
+- `Vectorize` for code that assumes valid indices and requires vectorization.
+
+- `UseBLAS` to use BLAS implementation if available, to vectorize otherwise.
 
 See macros [`@may_assume_inbounds`] and [`@may_vectorize`] for examples.
 
@@ -29,26 +30,27 @@ See macros [`@may_assume_inbounds`] and [`@may_vectorize`] for examples.
 abstract type OptimLevel end
 abstract type Debug     <: OptimLevel end # reference code for debugging
 abstract type InBounds  <: OptimLevel end # assume in-bounds
-abstract type Vectorize <: InBounds   end # require vectorization (also assume in-bounds)
-
+abstract type Vectorize <: InBounds   end # to vectorize (also assume in-bounds)
+abstract type UseBLAS   <: Vectorize  end
 @doc @doc(OptimLevel) Debug
 @doc @doc(OptimLevel) InBounds
 @doc @doc(OptimLevel) Vectorize
+@doc @doc(OptimLevel) UseBLAS
 
 """
 
-```julia
-@may_assume_inbounds P blk
-```
+    @may_assume_inbounds P blk
 
-yields code (avoiding escaping for clarity):
+yields code that may compile block of code `blk` without bound checking if
+allowed by `P`, that is if `P` inherits from `InBounds`.  This is equivalent
+to (without escaping for clarity):
 
 ```julia
 if \$P <: InBounds
      @inbounds \$blk
 else
      \$blk
-fi
+end
 ```
 
 In words, bound-checking is turned on/off at compilation time depending on the
@@ -67,8 +69,8 @@ end
 ```
 
 then `vsum(Debug,x)` will execute a version of the code that performs
-bound-checking; while `vsum(InBounds,x)` or `vsum(Vectorize,x)` will
-execute a version of the code that avoids bound-checking.
+bound-checking; while `vsum(InBounds,x)` or `vsum(Vectorize,x)` will execute a
+version of the code that avoids bound-checking.
 
 See [`@may_vectorize`], [`OptimLevel`].
 
@@ -90,12 +92,11 @@ macro may_assume_inbounds(P, blk)
 end
 
 """
+    @may_vectorize P blk
 
-```julia
-@may_vectorize P blk
-```
-
-yields code (avoiding escaping for clarity):
+yields code that may compile block of code `blk` with vectorization and/or
+without bound checking as allowed by the optimization level `P`.  This is
+equivalent to (without escaping for clarity):
 
 ```julia
 if \$P <:Vectorize
@@ -104,12 +105,12 @@ elseif \$P <: InBounds
      @inbounds \$blk
 else
      \$blk
-fi
+end
 ```
 
-In words, vectorization and/or bound-checking are turned on/off at
-compilation time depending on the type `P` without the needs to explicitly
-duplicate the code.
+In words, vectorization and/or bound-checking are turned on/off at compilation
+time depending on the type `P` without the needs to explicitly duplicate the
+code.
 
 A typical usage:
 

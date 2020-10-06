@@ -51,6 +51,8 @@ type parameter `P`:
 - `P <: Vectorize` for code that assumes valid indices and requires
   vectorization.
 
+- `UseBLAS` to use BLAS implementation if available, to vectorize otherwise.
+
 A block of code provided to the `@may_assume_inbounds` macro will be
 compiled with bound-checking (and thus no vectorization) if `P <: Debug`
 and without bound-checking (as if `@inbounds` was specified) if
