@@ -5,6 +5,7 @@ using MayOptimize
 
 # Singleton type to use version provided by Julia.
 struct Basic end
+struct Dummy <: MayOptimize.OptimLevel end
 
 function sum_inbounds(::Type{P},
                       x::AbstractVector{T}) where {T<:AbstractFloat,
@@ -74,6 +75,8 @@ dims = (10_000,)
     for T in (Float32, Float64)
         x = rand(T, dims)
         y = rand(T, dims)
+        @test_throws ErrorException sum(Dummy, x) ≈ sum(x)
+        @test_throws ErrorException sum_inbounds(Dummy, x) ≈ sum(x)
         @test sum_inbounds(Debug, x) ≈ sum(x)
         @test sum_inbounds(InBounds, x) ≈ sum(x)
         @test sum_inbounds(Vectorize, x) ≈ sum(x)
