@@ -1,7 +1,7 @@
-module ConditionallyOptimizeTests
+module MayOptimizeTests
 
 using Test, LinearAlgebra, BenchmarkTools
-using ConditionallyOptimize
+using MayOptimize
 
 # Singleton type to use version provided by Julia.
 struct Basic end
@@ -10,7 +10,7 @@ function sum_inbounds(::Type{P},
                       x::AbstractVector{T}) where {T<:AbstractFloat,
                                                    P<:OptimLevel}
     s = zero(T)
-    @may_assume_inbounds P for i in eachindex(x)
+    @maybe_inbounds P for i in eachindex(x)
         s += x[i]
     end
     return s
@@ -21,7 +21,7 @@ Base.sum(::Type{Basic}, x::AbstractArray) = sum(x)
 function Base.sum(::Type{P},
                   x::AbstractArray{<:AbstractFloat}) where {P<:OptimLevel}
     s = zero(eltype(x))
-    @may_vectorize P for i in eachindex(x)
+    @maybe_vectorized P for i in eachindex(x)
         s += x[i]
     end
     return s
@@ -34,7 +34,7 @@ function LinearAlgebra.dot(::Type{P},
                            y::AbstractVector{T}) where {T<:AbstractFloat,
                                                         P<:OptimLevel}
     s = zero(T)
-    @may_vectorize P for i in eachindex(x, y)
+    @maybe_vectorized P for i in eachindex(x, y)
         s += x[i]*y[i]
     end
     return s
@@ -46,8 +46,8 @@ module Bogus
 abstract type Debug end
 abstract type InBounds end
 abstract type Vectorize end
-import ConditionallyOptimize: OptimLevel, @may_assume_inbounds, @may_vectorize
-import ..ConditionallyOptimizeTests: sum_inbounds
+import MayOptimize: OptimLevel, @maybe_inbounds, @maybe_vectorized
+import ..MayOptimizeTests: sum_inbounds
 
 # Correct versions.
 sum0_inbounds(::Type{P}, x::AbstractVector) where {P<:OptimLevel} =
