@@ -1,6 +1,6 @@
 name = "MayOptimize"
 uuid = "049513e6-5a5e-4281-9d48-334ebac8954e"
-authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>"]
+authors = ["Éric Thiébaut <https://github.com/emmt>"]
 version = "0.2.0"
 
 [compat]
