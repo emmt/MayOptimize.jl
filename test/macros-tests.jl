@@ -2,9 +2,8 @@ module TestingMayOptimizeMacros
 
 using Test, LinearAlgebra
 using MayOptimize
+using MayOptimize: Basic
 
-# Singleton type to use version provided by Julia.
-struct Basic end
 struct Dummy <: MayOptimize.OptimLevel end
 
 function sum_inbounds(::Type{P},
@@ -13,30 +12,6 @@ function sum_inbounds(::Type{P},
     s = zero(T)
     @maybe_inbounds P for i in eachindex(x)
         s += x[i]
-    end
-    return s
-end
-
-Base.sum(::Type{Basic}, x::AbstractArray) = sum(x)
-
-function Base.sum(::Type{P},
-                  x::AbstractArray{<:AbstractFloat}) where {P<:OptimLevel}
-    s = zero(eltype(x))
-    @maybe_vectorized P for i in eachindex(x)
-        s += x[i]
-    end
-    return s
-end
-
-LinearAlgebra.dot(::Type{Basic}, x::AbstractVector, y::AbstractVector) = dot(x, y)
-
-function LinearAlgebra.dot(::Type{P},
-                           x::AbstractVector{T},
-                           y::AbstractVector{T}) where {T<:AbstractFloat,
-                                                        P<:OptimLevel}
-    s = zero(T)
-    @maybe_vectorized P for i in eachindex(x, y)
-        s += x[i]*y[i]
     end
     return s
 end

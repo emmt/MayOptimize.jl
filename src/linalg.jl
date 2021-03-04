@@ -6,8 +6,12 @@
 module LinearAlgebraMethods
 
 using ..MayOptimize
+using ..MayOptimize: AVX, Basic
 
 using LinearAlgebra
+import LinearAlgebra: dot, ldiv!, lmul!
+
+import Base: sum
 
 abstract type AbstractAlgorithm end
 abstract type CholeskyFactorization{opt<:OptimLevel} <: AbstractAlgorithm end
@@ -43,6 +47,31 @@ const CholeskyUpper{opt} = Union{CholeskyUpperColumnwiseI{opt},
                                  CholeskyUpperRowwise{opt}}
 
 const Floats = Union{AbstractFloat,Complex{<:AbstractFloat}}
+
+#------------------------------------------------------------------------------
+# Dot (scalar) product and sum.
+
+sum(::Type{Basic}, x::AbstractArray) = sum(x)
+
+function sum(opt::Type{<:OptimLevel}, x::AbstractArray)
+    s = zero(eltype(x))
+    @maybe_vectorized opt for i in eachindex(x)
+        s += x[i]
+    end
+    return s
+end
+
+dot(::Type{Basic}, x::AbstractVector, y::AbstractVector) = dot(x, y)
+
+function dot(opt::Type{<:OptimLevel},
+             x::AbstractArray{Tx,N},
+             y::AbstractArray{Ty,N}) where {Tx,Ty,N}
+    s = zero(promote_type(Tx, Ty))
+    @maybe_vectorized opt for i in eachindex(x, y)
+        s += x[i]*y[i]
+    end
+    return s
+end
 
 #------------------------------------------------------------------------------
 
