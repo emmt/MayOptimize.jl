@@ -117,8 +117,8 @@ No other packages are needed.
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.com/emmt/MayOptimize.jl.svg?branch=master
-[travis-url]: https://travis-ci.com/emmt/MayOptimize.jl
+[travis-img]: https://travis-ci.org/emmt/MayOptimize.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/emmt/MayOptimize.jl
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/MayOptimize.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/MayOptimize-jl/branch/master
