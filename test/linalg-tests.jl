@@ -49,10 +49,13 @@ end
     for T in (Float64, Complex{Float64})
         # Build a random Hermitian positive definite matrix.
         m, n = 1000, 30
-        B = 2*rand(T, m, n) .- 1
-        A = B'*B
+        H = 2*rand(T, m, n) .- 1
+        A = H'*H
         A = (A + A')/2
         C = cholesky(A)
+        x = 2*rand(T, n) .- 1
+        y = A*x
+        z = Array{T}(undef, n)
         for opt in (Debug, InBounds, Vectorize, AVX)
             for Alg in (CholeskyLowerColumnwise,
                         CholeskyLowerRowwiseI,
@@ -65,6 +68,7 @@ end
                 @test L*L' ≈ A
                 @test L ≈ C.L
                 @test check((a,i,j) -> (i ≥ j || isnan(a)), parent(L))
+                @test ldiv!(opt, L', ldiv!(opt, L, copyto!(z, y))) ≈ x
                 # Idem for the in-place operation version.
                 X = copy(A)
                 L = LowerTriangular(exec!(alg, X))
@@ -83,6 +87,7 @@ end
                 @test R'*R ≈ A
                 @test R ≈ C.U
                 @test check((a,i,j) -> (i ≤ j || isnan(a)), parent(R))
+                @test ldiv!(opt, R, ldiv!(opt, R', copyto!(z, y))) ≈ x
                 # Idem for the in-place operation version.
                 X = copy(A)
                 R = UpperTriangular(exec!(alg, X))

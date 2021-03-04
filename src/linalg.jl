@@ -49,9 +49,9 @@ const CholeskyUpper{opt} = Union{CholeskyUpperColumnwiseI{opt},
 const Floats = Union{AbstractFloat,Complex{<:AbstractFloat}}
 
 #------------------------------------------------------------------------------
-# Dot (scalar) product and sum.
+# Some basic linear algebra methods.
 
-sum(::Type{Basic}, x::AbstractArray) = sum(x)
+sum(::Type{<:Basic}, x::AbstractArray) = sum(x)
 
 function sum(opt::Type{<:OptimLevel}, x::AbstractArray)
     s = zero(eltype(x))
@@ -61,7 +61,7 @@ function sum(opt::Type{<:OptimLevel}, x::AbstractArray)
     return s
 end
 
-dot(::Type{Basic}, x::AbstractVector, y::AbstractVector) = dot(x, y)
+dot(::Type{<:Basic}, x::AbstractVector, y::AbstractVector) = dot(x, y)
 
 function dot(opt::Type{<:OptimLevel},
              x::AbstractArray{Tx,N},
@@ -71,6 +71,104 @@ function dot(opt::Type{<:OptimLevel},
         s += x[i]*y[i]
     end
     return s
+end
+
+#------------------------------------------------------------------------------
+# Left division by a matrix.
+#
+# Call standard methods.
+#
+ldiv!(::Type{<:Basic}, A, B) = ldiv!(A, B)
+ldiv!(::Type{<:Basic}, Y, A, B) = ldiv!(Y, A, B)
+#
+# Store A\b in b for A upper triangular.
+#
+function ldiv!(opt::Type{<:OptimLevel},
+               A::Union{UpperTriangular{T,<:AbstractMatrix{T}},
+                        UnitUpperTriangular{T,<:AbstractMatrix{T}}},
+               b::AbstractVector{T}) where {T<:Floats}
+    R = parent(A) # to avoid getindex overheads
+    n = check_ldiv_args(R, b)
+    @maybe_inbounds opt for j ∈ n:-1:1
+        if b[j] != 0
+            if !is_unit_triangular(A)
+                b[j] /= R[j,j]
+            end
+            temp = b[j]
+            @maybe_vectorized opt for i ∈ j-1:-1:1
+                b[i] -= temp*R[i,j]
+            end
+        end
+    end
+    return b
+end
+#
+# Store A\b in b for A lower triangular.
+#
+function ldiv!(opt::Type{<:OptimLevel},
+               A::Union{LowerTriangular{T,<:AbstractMatrix{T}},
+                        UnitLowerTriangular{T,<:AbstractMatrix{T}}},
+               b::AbstractVector{T}) where {T<:Floats}
+    L = parent(A) # to avoid getindex overheads
+    n = check_ldiv_args(L, b)
+    @maybe_inbounds opt for j ∈ 1:n
+        if b[j] != 0
+            if !is_unit_triangular(A)
+                b[j] /= L[j,j]
+            end
+            temp = b[j]
+            @maybe_vectorized opt for i ∈ j+1:n
+                b[i] -= temp*L[i,j]
+            end
+        end
+    end
+    return b
+end
+#
+# Store A'\b in b for A upper triangular.
+#
+function ldiv!(opt::Type{<:OptimLevel},
+               A::Union{Adjoint{T,S},Transpose{T,S}},
+               b::AbstractVector{T}) where {T<:Floats,
+                                            S<:Union{<:UpperTriangular{T},
+                                                     <:UnitUpperTriangular{T}}}
+    R = parent(parent(A)) # to avoid getindex overheads
+    n = check_ldiv_args(R, b)
+    f = conjugate_or_identity(A)
+    @maybe_inbounds opt for j ∈ 1:n
+        temp = b[j]
+        @maybe_vectorized opt for i ∈ 1:j-1
+            temp -= f(R[i,j])*b[i]
+        end
+        if !is_unit_triangular(A)
+            temp /= f(R[j,j])
+        end
+        b[j] = temp
+    end
+    return b
+end
+#
+# Store A'\b in b for A lower triangular.
+#
+function ldiv!(opt::Type{<:OptimLevel},
+               A::Union{Adjoint{T,S},Transpose{T,S}},
+               b::AbstractVector{T}) where {T<:Floats,
+                                            S<:Union{<:LowerTriangular{T},
+                                                     <:UnitLowerTriangular{T}}}
+    L = parent(parent(A)) # to avoid getindex overheads
+    n = check_ldiv_args(L, b)
+    f = conjugate_or_identity(A)
+    @maybe_inbounds opt for j ∈ n:-1:1
+        temp = b[j]
+        @maybe_vectorized opt for i ∈ n:-1:j+1
+            temp -= f(L[i,j])*b[i]
+        end
+        if !is_unit_triangular(A)
+            temp /= f(L[j,j])
+        end
+        b[j] = temp
+    end
+    return b
 end
 
 #------------------------------------------------------------------------------
@@ -268,5 +366,44 @@ function check_chol_args(L::AbstractMatrix, A::AbstractMatrix)
         throw(DimensionMismatch("matrixes must have the same axes"))
     return length(inds[1])
 end
+
+function check_ldiv_args(A::AbstractMatrix, b::AbstractVector)
+    Base.require_one_based_indexing(A, b)
+    m, n = size(A)
+    m == n ||
+        throw(DimensionMismatch("A must be a square matrix"))
+    length(b) == n ||
+        throw(DimensionMismatch("sizes of A and b are incompatible"))
+    return Int(n)
+end
+
+"""
+    is_unit_triangular(A)
+
+yields whether the matrix `A` is a unit triangular matrix or not.  The result
+is type-stable and is directly inferred from the type of `A`.  The argument can
+also be a matrix type.
+
+"""
+is_unit_triangular(::T) where {T<:AbstractMatrix} = is_unit_triangular(T)
+is_unit_triangular(::Type{<:Adjoint{T,S}}) where {T,S} = is_unit_triangular(S)
+is_unit_triangular(::Type{<:Transpose{T,S}}) where {T,S} = is_unit_triangular(S)
+is_unit_triangular(::Type{<:UnitLowerTriangular}) = true
+is_unit_triangular(::Type{<:UnitUpperTriangular}) = true
+is_unit_triangular(::Type{<:AbstractMatrix}) = false
+
+"""
+    conjugate_or_identity(A)
+
+yields `conj` if multiplying or dividing by the matrix `A` requires to take the
+conjugate of the values of the object backing the storage of the entries of
+`A`; otherwise yields `identity`.
+
+"""
+conjugate_or_identity(::Adjoint{<:Real}) = identity
+conjugate_or_identity(::Adjoint{<:Complex}) = conj
+conjugate_or_identity(::Transpose{<:Real}) = identity
+conjugate_or_identity(::Transpose{<:Complex}) = identity
+conjugate_or_identity(::AbstractMatrix) = identity
 
 end # module
