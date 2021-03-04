@@ -10,5 +10,14 @@ export
 
 include("types.jl")
 include("macros.jl")
+include("linalg.jl")
+import .LinearAlgebraMethods:
+    CholeskyLowerColumnwise,
+    CholeskyLowerRowwiseI,
+    CholeskyLowerRowwiseII,
+    CholeskyUpperColumnwiseI,
+    CholeskyUpperColumnwiseII,
+    CholeskyUpperRowwise,
+    exec!
 
 end # module
