@@ -6,7 +6,7 @@
 module LinearAlgebraMethods
 
 using ..MayOptimize
-using ..MayOptimize: AVX, Basic
+using ..MayOptimize: AVX, Standard
 
 using LinearAlgebra
 import LinearAlgebra: dot, ldiv!, lmul!
@@ -51,7 +51,7 @@ const Floats = Union{AbstractFloat,Complex{<:AbstractFloat}}
 #------------------------------------------------------------------------------
 # Some basic linear algebra methods.
 
-sum(::Type{<:Basic}, x::AbstractArray) = sum(x)
+sum(::Type{<:Standard}, x::AbstractArray) = sum(x)
 
 function sum(opt::Type{<:OptimLevel}, x::AbstractArray)
     s = zero(eltype(x))
@@ -61,7 +61,7 @@ function sum(opt::Type{<:OptimLevel}, x::AbstractArray)
     return s
 end
 
-dot(::Type{<:Basic}, x::AbstractVector, y::AbstractVector) = dot(x, y)
+dot(::Type{<:Standard}, x::AbstractVector, y::AbstractVector) = dot(x, y)
 
 function dot(opt::Type{<:OptimLevel},
              x::AbstractArray{Tx,N},
@@ -78,8 +78,8 @@ end
 #
 # Call standard methods.
 #
-ldiv!(::Type{<:Basic}, A, B) = ldiv!(A, B)
-ldiv!(::Type{<:Basic}, Y, A, B) = ldiv!(Y, A, B)
+ldiv!(::Type{<:Standard}, A, B) = ldiv!(A, B)
+ldiv!(::Type{<:Standard}, Y, A, B) = ldiv!(Y, A, B)
 #
 # Store A\b in b for A upper triangular.
 #
@@ -102,6 +102,19 @@ function ldiv!(opt::Type{<:OptimLevel},
     end
     return b
 end
+
+function ldiv!(opt::Type{<:OptimLevel},
+               y::AbstractVector{T},
+               A::Union{UpperTriangular{T,<:AbstractMatrix{T}},
+                        UnitUpperTriangular{T,<:AbstractMatrix{T}}},
+               b::AbstractVector{T}) where {T<:Floats}
+    if y !== b
+        @maybe_vectorized opt for i ∈ eachindex(y, b)
+            y[i] = b[i]
+        end
+    end
+    return ldiv!(opt, A, y)
+end
 #
 # Store A\b in b for A lower triangular.
 #
@@ -123,6 +136,19 @@ function ldiv!(opt::Type{<:OptimLevel},
         end
     end
     return b
+end
+
+function ldiv!(opt::Type{<:OptimLevel},
+               y::AbstractVector{T},
+               A::Union{LowerTriangular{T,<:AbstractMatrix{T}},
+                        UnitLowerTriangular{T,<:AbstractMatrix{T}}},
+               b::AbstractVector{T}) where {T<:Floats}
+    if y !== b
+        @maybe_vectorized opt for i ∈ eachindex(y, b)
+            y[i] = b[i]
+        end
+    end
+    return ldiv!(opt, A, y)
 end
 #
 # Store A'\b in b for A upper triangular.
@@ -147,6 +173,28 @@ function ldiv!(opt::Type{<:OptimLevel},
     end
     return b
 end
+
+function ldiv!(opt::Type{<:OptimLevel},
+               y::AbstractVector{T},
+               A::Union{Adjoint{T,S},Transpose{T,S}},
+               b::AbstractVector{T}) where {T<:Floats,
+                                            S<:Union{<:UpperTriangular{T},
+                                                     <:UnitUpperTriangular{T}}}
+    R = parent(parent(A)) # to avoid getindex overheads
+    n = check_ldiv_args(y, R, b)
+    f = conjugate_or_identity(A)
+    @maybe_inbounds opt for j ∈ 1:n
+        temp = b[j]
+        @maybe_vectorized opt for i ∈ 1:j-1
+            temp -= f(R[i,j])*y[i]
+        end
+        if !is_unit_triangular(A)
+            temp /= f(R[j,j])
+        end
+        y[j] = temp
+    end
+    return y
+end
 #
 # Store A'\b in b for A lower triangular.
 #
@@ -169,6 +217,28 @@ function ldiv!(opt::Type{<:OptimLevel},
         b[j] = temp
     end
     return b
+end
+
+function ldiv!(opt::Type{<:OptimLevel},
+               y::AbstractVector{T},
+               A::Union{Adjoint{T,S},Transpose{T,S}},
+               b::AbstractVector{T}) where {T<:Floats,
+                                            S<:Union{<:LowerTriangular{T},
+                                                     <:UnitLowerTriangular{T}}}
+    L = parent(parent(A)) # to avoid getindex overheads
+    n = check_ldiv_args(y, L, b)
+    f = conjugate_or_identity(A)
+    @maybe_inbounds opt for j ∈ n:-1:1
+        temp = b[j]
+        @maybe_vectorized opt for i ∈ n:-1:j+1
+            temp -= f(L[i,j])*y[i]
+        end
+        if !is_unit_triangular(A)
+            temp /= f(L[j,j])
+        end
+        y[j] = temp
+    end
+    return y
 end
 
 #------------------------------------------------------------------------------
@@ -372,6 +442,20 @@ function check_ldiv_args(A::AbstractMatrix, b::AbstractVector)
     m, n = size(A)
     m == n ||
         throw(DimensionMismatch("A must be a square matrix"))
+    length(b) == n ||
+        throw(DimensionMismatch("sizes of A and b are incompatible"))
+    return Int(n)
+end
+
+function check_ldiv_args(y::AbstractVector,
+                         A::AbstractMatrix,
+                         b::AbstractVector)
+    Base.require_one_based_indexing(y, A, b)
+    m, n = size(A)
+    m == n ||
+        throw(DimensionMismatch("A must be a square matrix"))
+    length(y) == n ||
+        throw(DimensionMismatch("sizes of A and y are incompatible"))
     length(b) == n ||
         throw(DimensionMismatch("sizes of A and b are incompatible"))
     return Int(n)

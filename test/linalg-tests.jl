@@ -53,6 +53,7 @@ end
         A = H'*H
         A = (A + A')/2
         C = cholesky(A)
+        w = Array{T}(undef, n)
         x = 2*rand(T, n) .- 1
         y = A*x
         z = Array{T}(undef, n)
@@ -68,7 +69,14 @@ end
                 @test L*L' ≈ A
                 @test L ≈ C.L
                 @test check((a,i,j) -> (i ≥ j || isnan(a)), parent(L))
+                @test ldiv!(opt, L, copyto!(z, y)) ≈ L\y
+                @test ldiv!(opt, z, L, y) ≈ L\y
+                @test ldiv!(opt, L', copyto!(w, z)) ≈ L'\z
+                @test ldiv!(opt, w, L', z) ≈ L'\z
                 @test ldiv!(opt, L', ldiv!(opt, L, copyto!(z, y))) ≈ x
+                @test ldiv!(opt, w, L', ldiv!(opt, z, L, y)) ≈ x
+                #@test lmul!(opt, L, lmul!(opt, L', copyto!(z, x))) ≈ y
+                #@test lmul!(opt, L, lmul!(opt, z, L', x)) ≈ y
                 # Idem for the in-place operation version.
                 X = copy(A)
                 L = LowerTriangular(exec!(alg, X))
@@ -87,7 +95,14 @@ end
                 @test R'*R ≈ A
                 @test R ≈ C.U
                 @test check((a,i,j) -> (i ≤ j || isnan(a)), parent(R))
+                @test ldiv!(opt, R', copyto!(z, y)) ≈ R'\y
+                @test ldiv!(opt, z, R', y) ≈ R'\y
+                @test ldiv!(opt, R, copyto!(w, z)) ≈ R\z
+                @test ldiv!(opt, w, R, z) ≈ R\z
                 @test ldiv!(opt, R, ldiv!(opt, R', copyto!(z, y))) ≈ x
+                @test ldiv!(opt, w, R, ldiv!(opt, z, R', y)) ≈ x
+                #@test lmul!(opt, R', lmul!(opt, R, copyto!(z, x))) ≈ y
+                #@test lmul!(opt, R', lmul!(opt, z, R, x)) ≈ y
                 # Idem for the in-place operation version.
                 X = copy(A)
                 R = UpperTriangular(exec!(alg, X))
