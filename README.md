@@ -125,8 +125,14 @@ In the first case, the operation is done in-place and `b` is overwritten with
 `A\b`, in the second case, `A\b` is stored in `y`.  Argument `opt` can be
 `MayOptimize.Standard` to use Julia standard method (probably BLAS), `Debug`,
 `InBounds` or `Vectorize` to compile Julia code in `MayOptimize` with different
-optimization settings.  The following figures show how efficient can be Julia
-code when compiled with well chosen optimization settings.
+optimization settings.  The following figures (obtained with Julia 1.5.3 on an
+AMD Ryzen Threadripper 2950X 16-Core processor) show how efficient can be Julia
+code when compiled with well chosen optimization settings (note the 1.7 gain
+compared to the standard implementation when `@simd` is used in the innermost
+loop level).  Having a look at [`src/linalg.jl`](src/linalg.jl), you can
+realize that the code is identical for the `Debug`, `InBounds` or `Vectorize`
+settings (only the `opt` argument changes) and that this code turns out to be
+pretty straightforward.
 
 ![Left division by a lower triangular matrix](figs/ldiv-L-median.png "")
 
