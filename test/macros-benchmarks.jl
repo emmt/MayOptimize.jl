@@ -2,9 +2,9 @@ module BenchmarkingMayOptimizeMacros
 
 using BenchmarkTools, LinearAlgebra
 using MayOptimize
-using MayOptimize: Basic, AVX
+using MayOptimize: Standard, AVX
 
-ops = ((:Basic, "----"),
+ops = ((:Standard, "-"),
        (:Debug, "----"),
        (:InBounds, "-"),
        (:Vectorize, ""))
@@ -13,7 +13,7 @@ for T in (Float32, Float64)
     x = rand(T, dims)
     y = rand(T, dims)
     println()
-    println("Tests for T=$T and $(length(x)) elements (\"Basic\" is ",
+    println("Tests for T=$T and $(length(x)) elements (\"Standard\" is ",
             "Julia own implementation):")
     for (P, str) in ops
         print(" - Time for `sum($P,x)` ", str, "----> ")

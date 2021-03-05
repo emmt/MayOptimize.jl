@@ -2,9 +2,9 @@ module TestingMayOptimizeMacros
 
 using Test, LinearAlgebra
 using MayOptimize
-using MayOptimize: Basic
+using MayOptimize: Standard, CodeChoice
 
-struct Dummy <: MayOptimize.OptimLevel end
+struct Dummy <: OptimLevel end
 
 function sum_inbounds(::Type{P},
                       x::AbstractVector{T}) where {T<:AbstractFloat,
@@ -54,11 +54,11 @@ dims = (10_000,)
         @test sum_inbounds(Debug, x) ≈ sum(x)
         @test sum_inbounds(InBounds, x) ≈ sum(x)
         @test sum_inbounds(Vectorize, x) ≈ sum(x)
-        @test sum(Basic, x) == sum(x)
+        @test sum(Standard, x) == sum(x)
         @test sum(Debug, x) ≈ sum(x)
         @test sum(InBounds, x) ≈ sum(x)
         @test sum(Vectorize, x) ≈ sum(x)
-        @test dot(Basic, x, y) == dot(x,y)
+        @test dot(Standard, x, y) == dot(x,y)
         @test dot(Debug, x, y) ≈ dot(x,y)
         @test dot(InBounds, x, y) ≈ dot(x,y)
         @test dot(Vectorize, x, y) ≈ dot(x,y)

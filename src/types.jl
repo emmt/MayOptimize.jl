@@ -1,7 +1,24 @@
 """
 
+`MayOptimize.CodeChoice` is the abstract parent type for the different types
+implemented by the package `MayOptimize`.  Derived types are:
+
+- **`MayOptimize.Standard`** is a singleton type derived from
+  `MayOptimize.CodeChoice` and intended to specify that a standard Julia method
+  must be used.  This type is purposely not supported by `MayOptimize` macros
+  as they should not be used with it.  This type is not exported by default.
+
+- **`OptimLevel`** is an abstract type derived from
+  `MayOptimize.CodeChoice` and used to compile Julia methods with specific
+  optimizations thanks to the macros of the `MayOptimize` package.
+
+"""
+abstract type CodeChoice end
+
+"""
+
 `OptimLevel` is the abstract parent type for the different optimization levels
-implemented by the package *MayOptimize*.  Derived types are:
+implemented by the macros of the package `MayOptimize`.  Derived types are:
 
 - `Debug` for debugging or reference code that performs bound checking and no
   vectorization.
@@ -14,10 +31,10 @@ implemented by the package *MayOptimize*.  Derived types are:
 See macros [`@maybe_inbounds`] and [`@maybe_vectorized`] for examples.
 
 """
-abstract type OptimLevel end
-abstract type Debug     <: OptimLevel end # reference code for debugging
-abstract type InBounds  <: OptimLevel end # assume in-bounds
-abstract type Vectorize <: InBounds   end # to vectorize (also assume in-bounds)
+abstract type OptimLevel <: CodeChoice  end # reference code for debugging
+abstract type Debug      <: OptimLevel  end # reference code for debugging
+abstract type InBounds   <: OptimLevel  end # assume in-bounds
+abstract type Vectorize  <: InBounds    end # to vectorize (also assume in-bounds)
 @doc @doc(OptimLevel) Debug
 @doc @doc(OptimLevel) InBounds
 @doc @doc(OptimLevel) Vectorize
@@ -31,20 +48,20 @@ is the reason to inherit from [`Vectorize`](@ref)).
 For now, this type is not exported by default and using it with the
 `MayOptimize` macros behaves as if [`Vectorize`](@ref) optimization level has
 been selected.  Specialized methods have to be written to exploit the power of
-`@avx` which can deal with several loop levels (unlike `@simd` which is limite
-to the innermost level).
+`@avx` which can deal with several loop levels (unlike `@simd` which is
+restricted to the innermost loop level).
 
 """
 abstract type AVX <: Vectorize end
 
 """
 
-`MayOptimize.Basic` is a singleton type derived from `MayOptimize.OptimLevel`
-and intended to use version of methods provided by Julia.  This type is
-purposely not supported by `MayOptimize` macros as they should not be used with
-it.
+`MayOptimize.Standard` is a singleton type derived from
+`MayOptimize.CodeChoice` and intended to specify that standard Julia methods
+should be used.  This type is purposely not supported by `MayOptimize` macros
+as they should not be used with it.
 
 This type is not exported by default.
 
 """
-struct Basic <: OptimLevel end
+struct Standard <: CodeChoice end
