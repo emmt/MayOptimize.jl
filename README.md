@@ -104,10 +104,38 @@ In Julia, hit the `]` key to switch to the package manager REPL (you should get
 a `... pkg>` prompt) and type:
 
 ```julia
-add https://github.com/emmt/MayOptimize.jl
+add MayOptimize
 ```
 
 No other packages are needed.
+
+
+## Examples
+
+`MayOptimize` extends a few base linear algebra methods such as the `ldiv!`
+method which performs left division by a matrix `A` and can be called as:
+
+```julia
+using MayOptimize, LinearAlgebra
+ldiv!(opt, A, b)
+ldiv!(opt, y, A, b)
+```
+
+In the first case, the operation is done in-place and `b` is overwritten with
+`A\b`, in the second case, `A\b` is stored in `y`.  Argument `opt` can be
+`MayOptimize.Standard` to use Julia standard method (probably BLAS), `Debug`,
+`InBounds` or `Vectorize` to compile Julia code in `MayOptimize` with different
+optimization settings.  The following figures show how efficient can be Julia
+code when compiled with well chosen optimization settings.
+
+![Left division by a lower triangular matrix](figs/ldiv-L-median.png "")
+
+![Left division by the transpose of a lower triangular matrix](figs/ldiv-Lt-median.png "")
+
+![Left division by an upper triangular matrix](figs/ldiv-R-median.png "")
+
+![Left division by the transpose of an upper triangular matrix](figs/ldiv-Rt-median.png "")
+
 
 [repository-url]:  https://github.com/emmt/MayOptimize.jl
 
