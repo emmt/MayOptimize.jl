@@ -95,7 +95,7 @@ function ldiv!(opt::Type{<:OptimLevel},
                 b[j] /= R[j,j]
             end
             temp = b[j]
-            @maybe_vectorized opt for i ∈ j-1:-1:1
+            @maybe_vectorized opt for i ∈ 1:j-1 # was j-1:-1:1 in BLAS
                 b[i] -= temp*R[i,j]
             end
         end
