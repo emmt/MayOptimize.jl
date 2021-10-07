@@ -9,42 +9,49 @@ using ..MayOptimize
 using ..MayOptimize: AVX, Standard
 
 using LinearAlgebra
-import LinearAlgebra: dot, ldiv!, lmul!
+import LinearAlgebra: dot, ldiv!, lmul!, cholesky, cholesky!
 
+using Base: has_offset_axes
 import Base: sum
 
 abstract type AbstractAlgorithm end
 abstract type CholeskyFactorization{opt<:OptimLevel} <: AbstractAlgorithm end
-struct CholeskyLowerColumnwise{  opt} <: CholeskyFactorization{opt} end
-struct CholeskyLowerRowwiseI{    opt} <: CholeskyFactorization{opt} end
-struct CholeskyLowerRowwiseII{   opt} <: CholeskyFactorization{opt} end
-struct CholeskyUpperColumnwiseI{ opt} <: CholeskyFactorization{opt} end
-struct CholeskyUpperColumnwiseII{opt} <: CholeskyFactorization{opt} end
-struct CholeskyUpperRowwise{     opt} <: CholeskyFactorization{opt} end
+abstract type CholeskyLower{opt} <: CholeskyFactorization{opt} end
+abstract type CholeskyUpper{opt} <: CholeskyFactorization{opt} end
+struct CholeskyLowerColumnwise{  opt} <: CholeskyLower{opt} end
+struct CholeskyLowerRowwiseI{    opt} <: CholeskyLower{opt} end
+struct CholeskyLowerRowwiseII{   opt} <: CholeskyLower{opt} end
+struct CholeskyUpperColumnwiseI{ opt} <: CholeskyUpper{opt} end
+struct CholeskyUpperColumnwiseII{opt} <: CholeskyUpper{opt} end
+struct CholeskyUpperRowwise{     opt} <: CholeskyUpper{opt} end
 
-# Vectorize does not improve lower triangular Cholesky factorization, so make
-# InBounds the default.
-for Alg in (:CholeskyLowerColumnwise,
+default_optimization(::Type{<:AbstractAlgorithm}) = InBounds
+
+for alg in (:CholeskyLowerColumnwise,
             :CholeskyLowerRowwiseI,
-            :CholeskyLowerRowwiseII)
-    @eval $Alg(opt::Type{<:OptimLevel} = InBounds) = $Alg{opt}()
-end
-
-# Vectorize does improve upper triangular Cholesky factorization, so make it the
-# default.
-for Alg in (:CholeskyUpperColumnwiseI,
+            :CholeskyLowerRowwiseII,
+            :CholeskyUpperColumnwiseI,
             :CholeskyUpperColumnwiseII,
             :CholeskyUpperRowwise)
-    @eval $Alg(opt::Type{<:OptimLevel} = InBounds) = $Alg{opt}()
+    @eval $alg(opt::Type{<:OptimLevel} = default_optimization($alg)) =
+        $alg{opt}()
 end
 
-const CholeskyLower{opt} = Union{CholeskyLowerColumnwise{opt},
-                                 CholeskyLowerRowwiseI{opt},
-                                 CholeskyLowerRowwiseII{opt}}
+# Vectorization does not improve lower triangular Cholesky factorization, so
+# make `InBounds` the default.
+default_optimization(::Type{<:CholeskyLower}) = InBounds
 
-const CholeskyUpper{opt} = Union{CholeskyUpperColumnwiseI{opt},
-                                 CholeskyUpperColumnwiseII{opt},
-                                 CholeskyUpperRowwise{opt}}
+# Vectorization does improve upper triangular Cholesky factorization, so make
+# `Vectorize` the default.
+default_optimization(::Type{<:CholeskyUpper}) = Vectorize
+
+# Use the most efficient version by default.
+const BestCholeskyFactorization = CholeskyUpperRowwise
+CholeskyFactorization() = BestCholeskyFactorization()
+CholeskyFactorization(opt::Type{<:OptimLevel}) =
+    BestCholeskyFactorization(opt)
+CholeskyFactorization{opt}() where {opt<:OptimLevel} =
+    BestCholeskyFactorization{opt}()
 
 const Floats = Union{AbstractFloat,Complex{<:AbstractFloat}}
 
@@ -68,7 +75,7 @@ function dot(opt::Type{<:OptimLevel},
              y::AbstractArray{Ty,N}) where {Tx,Ty,N}
     s = zero(promote_type(Tx, Ty))
     @maybe_vectorized opt for i in eachindex(x, y)
-        s += x[i]*y[i]
+        s += conj(x[i])*y[i]
     end
     return s
 end
@@ -174,6 +181,7 @@ function ldiv!(opt::Type{<:OptimLevel},
     return b
 end
 
+# FIXME: operation can be made in-place so simplify the above method.
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
                A::Union{Adjoint{T,S},Transpose{T,S}},
@@ -219,6 +227,7 @@ function ldiv!(opt::Type{<:OptimLevel},
     return b
 end
 
+# FIXME: operation can be made in-place so simplify the above method.
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
                A::Union{Adjoint{T,S},Transpose{T,S}},
@@ -241,6 +250,43 @@ function ldiv!(opt::Type{<:OptimLevel},
     return y
 end
 
+function ldiv!(opt::Type{<:OptimLevel},
+               A::Cholesky{T},
+               b::AbstractVector{T}) where{T}
+    uplo = getfield(A, :uplo)
+    if uplo === 'U'
+        R = getfield(A, :factors)
+        ldiv!(opt, R, ldiv!(opt, R', b))
+    elseif uplo === 'L'
+        L = getfield(A, :factors)
+        ldiv!(opt, L', ldiv!(opt, L, b))
+    else
+        throw_bad_uplo_field(A)
+    end
+    return b
+end
+
+function ldiv!(opt::Type{<:OptimLevel},
+               y::AbstractVector{T},
+               A::Cholesky{T},
+               b::AbstractVector{T}) where{T}
+    uplo = getfield(A, :uplo)
+    if uplo === 'U'
+        R = getfield(A, :factors)
+        ldiv!(opt, R, ldiv!(opt, y, R', b))
+    elseif uplo === 'L'
+        L = getfield(A, :factors)
+        ldiv!(opt, L', ldiv!(opt, y, L, b))
+    else
+        throw_bad_uplo_field(A)
+    end
+    return b
+end
+
+@noinline throw_bad_uplo_field(A::Cholesky) = error(
+    "Unexpected field uplo='", getfield(A, :uplo),
+    "' in Cholesky factorization")
+
 #------------------------------------------------------------------------------
 
 """
@@ -253,6 +299,27 @@ destination `dst`.
 
 # Cholesky factorization can be done in-place.
 exec!(alg::CholeskyFactorization, A::AbstractMatrix) = exec!(alg, A, A)
+
+cholesky(opt::Type{<:OptimLevel}, A::AbstractMatrix) =
+    cholesky(CholeskyFactorization(opt), A)
+
+cholesky(alg::CholeskyFactorization, A::AbstractMatrix) =
+    Cholesky(exec!(alg, similar(A), A), uplo_char(alg), 0)
+
+cholesky!(opt::Type{<:OptimLevel}, A::AbstractMatrix) =
+    cholesky!(CholeskyFactorization(opt), A)
+
+cholesky!(opt::Type{<:OptimLevel}, buf::AbstractMatrix, A::AbstractMatrix) =
+    cholesky!(CholeskyFactorization(opt), buf, A)
+
+cholesky!(alg::CholeskyFactorization, A::AbstractMatrix) =
+    Cholesky(exec!(alg, A), uplo_char(alg), 0)
+
+cholesky!(alg::CholeskyFactorization, buf::AbstractMatrix, A::AbstractMatrix) =
+    Cholesky(exec!(alg, buf, A), uplo_char(alg), 0)
+
+uplo_char(::CholeskyLower) = 'L'
+uplo_char(::CholeskyUpper) = 'U'
 
 #------------------------------------------------------------------------------
 # Lower triangular Cholesky factorization.
@@ -428,7 +495,7 @@ end
 #------------------------------------------------------------------------------
 
 function check_chol_args(L::AbstractMatrix, A::AbstractMatrix)
-    Base.require_one_based_indexing(L, A)
+    require_one_based_indexing(L, A)
     inds = axes(A)
     inds[1] == inds[2] ||
         throw(DimensionMismatch("expecting a square matrix"))
@@ -438,7 +505,7 @@ function check_chol_args(L::AbstractMatrix, A::AbstractMatrix)
 end
 
 function check_ldiv_args(A::AbstractMatrix, b::AbstractVector)
-    Base.require_one_based_indexing(A, b)
+    require_one_based_indexing(A, b)
     m, n = size(A)
     m == n ||
         throw(DimensionMismatch("A must be a square matrix"))
@@ -450,7 +517,7 @@ end
 function check_ldiv_args(y::AbstractVector,
                          A::AbstractMatrix,
                          b::AbstractVector)
-    Base.require_one_based_indexing(y, A, b)
+    require_one_based_indexing(y, A, b)
     m, n = size(A)
     m == n ||
         throw(DimensionMismatch("A must be a square matrix"))
@@ -460,6 +527,9 @@ function check_ldiv_args(y::AbstractVector,
         throw(DimensionMismatch("sizes of A and b are incompatible"))
     return Int(n)
 end
+
+require_one_based_indexing(A...) = has_offset_axes(A...) && throw(
+    ArgumentError("arrays must have 1-based indexing"))
 
 """
     is_unit_triangular(A)
