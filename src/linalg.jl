@@ -9,6 +9,7 @@ using ..MayOptimize
 using ..MayOptimize: AVX, Standard
 
 using LinearAlgebra
+using LinearAlgebra: AbstractTriangular
 import LinearAlgebra: dot, ldiv!, lmul!, cholesky, cholesky!
 
 using Base: has_offset_axes
@@ -24,6 +25,13 @@ struct CholeskyLowerRowwiseII{   opt} <: CholeskyLower{opt} end
 struct CholeskyUpperColumnwiseI{ opt} <: CholeskyUpper{opt} end
 struct CholeskyUpperColumnwiseII{opt} <: CholeskyUpper{opt} end
 struct CholeskyUpperRowwise{     opt} <: CholeskyUpper{opt} end
+
+const AnyUpperTriangular{T} = Union{
+    UpperTriangular{T,<:AbstractMatrix{T}},
+    UnitUpperTriangular{T,<:AbstractMatrix{T}}}
+const AnyLowerTriangular{T} = Union{
+    LowerTriangular{T,<:AbstractMatrix{T}},
+    UnitLowerTriangular{T,<:AbstractMatrix{T}}}
 
 default_optimization(::Type{<:AbstractAlgorithm}) = InBounds
 
@@ -93,11 +101,21 @@ if VERSION < v"1.4.0-rc1"
         ldiv!(A, copyto!(Y, B))
 end
 #
+# Store A\b in y for A triangular.
+#
+function ldiv!(opt::Type{<:OptimLevel},
+               y::AbstractVector{T},
+               A::AbstractTriangular{T},
+               b::AbstractVector{T}) where {T<:Floats}
+    y === b || copyto!(y, b)
+    return ldiv!(opt, A, y)
+end
+
+#
 # Store A\b in b for A upper triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
-               A::Union{UpperTriangular{T,<:AbstractMatrix{T}},
-                        UnitUpperTriangular{T,<:AbstractMatrix{T}}},
+               A::AnyUpperTriangular{T},
                b::AbstractVector{T}) where {T<:Floats}
     R = parent(A) # to avoid getindex overheads
     n = check_ldiv_args(R, b)
@@ -114,25 +132,11 @@ function ldiv!(opt::Type{<:OptimLevel},
     end
     return b
 end
-
-function ldiv!(opt::Type{<:OptimLevel},
-               y::AbstractVector{T},
-               A::Union{UpperTriangular{T,<:AbstractMatrix{T}},
-                        UnitUpperTriangular{T,<:AbstractMatrix{T}}},
-               b::AbstractVector{T}) where {T<:Floats}
-    if y !== b
-        @maybe_vectorized opt for i ∈ eachindex(y, b)
-            y[i] = b[i]
-        end
-    end
-    return ldiv!(opt, A, y)
-end
 #
 # Store A\b in b for A lower triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
-               A::Union{LowerTriangular{T,<:AbstractMatrix{T}},
-                        UnitLowerTriangular{T,<:AbstractMatrix{T}}},
+               A::AnyLowerTriangular{T},
                b::AbstractVector{T}) where {T<:Floats}
     L = parent(A) # to avoid getindex overheads
     n = check_ldiv_args(L, b)
@@ -149,27 +153,13 @@ function ldiv!(opt::Type{<:OptimLevel},
     end
     return b
 end
-
-function ldiv!(opt::Type{<:OptimLevel},
-               y::AbstractVector{T},
-               A::Union{LowerTriangular{T,<:AbstractMatrix{T}},
-                        UnitLowerTriangular{T,<:AbstractMatrix{T}}},
-               b::AbstractVector{T}) where {T<:Floats}
-    if y !== b
-        @maybe_vectorized opt for i ∈ eachindex(y, b)
-            y[i] = b[i]
-        end
-    end
-    return ldiv!(opt, A, y)
-end
 #
 # Store A'\b in b for A upper triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
                A::Union{Adjoint{T,S},Transpose{T,S}},
                b::AbstractVector{T}) where {T<:Floats,
-                                            S<:Union{<:UpperTriangular{T},
-                                                     <:UnitUpperTriangular{T}}}
+                                            S<:AnyUpperTriangular{T}}
     R = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(R, b)
     f = conjugate_or_identity(A)
@@ -191,8 +181,7 @@ function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
                A::Union{Adjoint{T,S},Transpose{T,S}},
                b::AbstractVector{T}) where {T<:Floats,
-                                            S<:Union{<:UpperTriangular{T},
-                                                     <:UnitUpperTriangular{T}}}
+                                            S<:AnyUpperTriangular{T}}
     R = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(y, R, b)
     f = conjugate_or_identity(A)
@@ -214,8 +203,7 @@ end
 function ldiv!(opt::Type{<:OptimLevel},
                A::Union{Adjoint{T,S},Transpose{T,S}},
                b::AbstractVector{T}) where {T<:Floats,
-                                            S<:Union{<:LowerTriangular{T},
-                                                     <:UnitLowerTriangular{T}}}
+                                            S<:AnyLowerTriangular{T}}
     L = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(L, b)
     f = conjugate_or_identity(A)
@@ -237,8 +225,7 @@ function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
                A::Union{Adjoint{T,S},Transpose{T,S}},
                b::AbstractVector{T}) where {T<:Floats,
-                                            S<:Union{<:LowerTriangular{T},
-                                                     <:UnitLowerTriangular{T}}}
+                                            S<:AnyLowerTriangular{T}}
     L = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(y, L, b)
     f = conjugate_or_identity(A)
