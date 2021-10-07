@@ -87,6 +87,11 @@ end
 #
 ldiv!(::Type{<:Standard}, A, B) = ldiv!(A, B)
 ldiv!(::Type{<:Standard}, Y, A, B) = ldiv!(Y, A, B)
+if VERSION < v"1.4.0-rc1"
+    # Generic fallback. This assumes that B and Y have the same sizes.
+    ldiv!(Y::AbstractArray, A::AbstractMatrix, B::AbstractArray) =
+        ldiv!(A, copyto!(Y, B))
+end
 #
 # Store A\b in b for A upper triangular.
 #
