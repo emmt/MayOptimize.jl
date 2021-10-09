@@ -3,14 +3,14 @@
 `MayOptimize.CodeChoice` is the abstract parent type for the different types
 implemented by the package `MayOptimize`.  Derived types are:
 
-- **`MayOptimize.Standard`** is a singleton type derived from
-  `MayOptimize.CodeChoice` and intended to specify that a standard Julia method
-  must be used.  This type is purposely not supported by `MayOptimize` macros
-  as they should not be used with it.  This type is not exported by default.
+- `MayOptimize.Standard` is a singleton type intended to specify that a
+  standard Julia method must be used.  This type is purposely not supported by
+  `MayOptimize` macros as they should not be used with it.  This type is not
+  exported by default.
 
-- **`OptimLevel`** is an abstract type derived from
-  `MayOptimize.CodeChoice` and used to compile Julia methods with specific
-  optimizations thanks to the macros of the `MayOptimize` package.
+- [`OptimLevel`](@ref) is an abstract type whose sub-types are used to compile
+  Julia methods with specific optimizations thanks to the macros of the
+  `MayOptimize` package.
 
 """
 abstract type CodeChoice end

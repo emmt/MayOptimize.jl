@@ -19,28 +19,66 @@ abstract type AbstractAlgorithm end
 abstract type CholeskyFactorization{opt<:OptimLevel} <: AbstractAlgorithm end
 abstract type CholeskyLower{opt} <: CholeskyFactorization{opt} end
 abstract type CholeskyUpper{opt} <: CholeskyFactorization{opt} end
-struct CholeskyLowerColumnwise{  opt} <: CholeskyLower{opt} end
-struct CholeskyLowerRowwiseI{    opt} <: CholeskyLower{opt} end
-struct CholeskyLowerRowwiseII{   opt} <: CholeskyLower{opt} end
-struct CholeskyUpperColumnwiseI{ opt} <: CholeskyUpper{opt} end
-struct CholeskyUpperColumnwiseII{opt} <: CholeskyUpper{opt} end
-struct CholeskyUpperRowwise{     opt} <: CholeskyUpper{opt} end
 
-const AnyUpperTriangular{T} = Union{
-    UpperTriangular{T,<:AbstractMatrix{T}},
-    UnitUpperTriangular{T,<:AbstractMatrix{T}}}
+# There are 2 variants to perform the Cholesky factorization
+# Cholesky-Banachiewicz (which proceeds row-size) and Cholesky-Banachiewicz
+# (which proceeds column-size) and they can be used to compute the L⋅L' or the
+# R'⋅R factorizations.
+struct CholeskyBanachiewiczLowerII{opt} <: CholeskyLower{opt} end
+struct CholeskyBanachiewiczLowerI{ opt} <: CholeskyLower{opt} end
+struct CholeskyBanachiewiczUpper{  opt} <: CholeskyUpper{opt} end
+struct CholeskyCroutLower{         opt} <: CholeskyLower{opt} end
+struct CholeskyCroutUpperII{       opt} <: CholeskyUpper{opt} end
+struct CholeskyCroutUpperI{        opt} <: CholeskyUpper{opt} end
+
+"""
+     AnyLowerTriangular{T}
+
+is the union of lower triangular matrix types defined in Julia standard library
+`LinearAlgebra` and wrapped over regular matrices, that is
+`LowerTriangular{T,S}` and `UnitLowerTriangular{T,S}` with `S <:
+AbstractMatrix{T}`.  The matrix (of type `S`) backing the storage of the
+entries is given by calling the `parent` method.
+
+For the parent, say `A`, of a lower-triangular matrix, only entries `A[i,j]`
+for `i ≥ j` shall be accessed.
+
+For the parent, say `A`, of a unit lower-triangular matrix, only entries
+`A[i,j]` for `i > j` shall be accessed and `A[i,i] = 1` shall be assumed.
+
+"""
 const AnyLowerTriangular{T} = Union{
     LowerTriangular{T,<:AbstractMatrix{T}},
     UnitLowerTriangular{T,<:AbstractMatrix{T}}}
 
+"""
+     AnyUpperTriangular{T}
+
+is the union of upper triangular matrix types defined in standard Julia library
+`LinearAlgebra` and wrapped over regular matrices, that is
+`UpperTriangular{T,S}` and `UnitUpperTriangular{T,S}` with `S <:
+AbstractMatrix{T}`.  The matrix (of type `S`) backing the storage of the
+entries is given by calling the `parent` method.
+
+For the parent, say `A`, of an upper-triangular matrix, only entries `A[i,j]`
+for `i ≤ j` shall be accessed.
+
+For the parent, say `A`, of a unit upper-triangular matrix, only entries
+`A[i,j]` for `i < j` shall be accessed and `A[i,i] = 1` shall be assumed.
+
+"""
+const AnyUpperTriangular{T} = Union{
+    UpperTriangular{T,<:AbstractMatrix{T}},
+    UnitUpperTriangular{T,<:AbstractMatrix{T}}}
+
 default_optimization(::Type{<:AbstractAlgorithm}) = InBounds
 
-for alg in (:CholeskyLowerColumnwise,
-            :CholeskyLowerRowwiseI,
-            :CholeskyLowerRowwiseII,
-            :CholeskyUpperColumnwiseI,
-            :CholeskyUpperColumnwiseII,
-            :CholeskyUpperRowwise)
+for alg in (:CholeskyBanachiewiczLowerI,
+            :CholeskyBanachiewiczLowerII,
+            :CholeskyBanachiewiczUpper,
+            :CholeskyCroutLower,
+            :CholeskyCroutUpperI,
+            :CholeskyCroutUpperII)
     @eval $alg(opt::Type{<:OptimLevel} = default_optimization($alg)) =
         $alg{opt}()
 end
@@ -54,7 +92,7 @@ default_optimization(::Type{<:CholeskyLower}) = InBounds
 default_optimization(::Type{<:CholeskyUpper}) = Vectorize
 
 # Use the most efficient version by default.
-const BestCholeskyFactorization = CholeskyUpperRowwise
+const BestCholeskyFactorization = CholeskyBanachiewiczUpper
 CholeskyFactorization() = BestCholeskyFactorization()
 CholeskyFactorization(opt::Type{<:OptimLevel}) =
     BestCholeskyFactorization(opt)
@@ -97,8 +135,10 @@ ldiv!(::Type{<:Standard}, A, B) = ldiv!(A, B)
 ldiv!(::Type{<:Standard}, Y, A, B) = ldiv!(Y, A, B)
 if VERSION < v"1.4.0-rc1"
     # Generic fallback. This assumes that B and Y have the same sizes.
-    ldiv!(Y::AbstractArray, A::AbstractMatrix, B::AbstractArray) =
-        ldiv!(A, copyto!(Y, B))
+    ldiv!(Y::AbstractArray, A::AbstractMatrix, B::AbstractArray) = begin
+        Y === B || copyto!(Y, B)
+        return ldiv!(A, Y)
+    end
 end
 #
 # Store A\b in y for A triangular.
@@ -176,7 +216,6 @@ function ldiv!(opt::Type{<:OptimLevel},
     return b
 end
 
-# FIXME: operation can be made in-place so simplify the above method.
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
                A::Union{Adjoint{T,S},Transpose{T,S}},
@@ -220,7 +259,6 @@ function ldiv!(opt::Type{<:OptimLevel},
     return b
 end
 
-# FIXME: operation can be made in-place so simplify the above method.
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
                A::Union{Adjoint{T,S},Transpose{T,S}},
@@ -292,21 +330,25 @@ destination `dst`.
 # Cholesky factorization can be done in-place.
 exec!(alg::CholeskyFactorization, A::AbstractMatrix) = exec!(alg, A, A)
 
+# Call standard Cholesky method.
+cholesky(::Type{<:Standard}, A::AbstractMatrix, args...; kwds...) =
+    cholesky(A, args...; kwds...)
+cholesky!(::Type{<:Standard}, A::AbstractMatrix, args...; kwds...) =
+    cholesky!(A, args...; kwds...)
+
+# Call default Cholesky method.
 cholesky(opt::Type{<:OptimLevel}, A::AbstractMatrix) =
     cholesky(CholeskyFactorization(opt), A)
-
-cholesky(alg::CholeskyFactorization, A::AbstractMatrix) =
-    Cholesky(exec!(alg, similar(A), A), uplo_char(alg), 0)
-
 cholesky!(opt::Type{<:OptimLevel}, A::AbstractMatrix) =
     cholesky!(CholeskyFactorization(opt), A)
-
 cholesky!(opt::Type{<:OptimLevel}, buf::AbstractMatrix, A::AbstractMatrix) =
     cholesky!(CholeskyFactorization(opt), buf, A)
 
+# Call specific Cholesky method.
+cholesky(alg::CholeskyFactorization, A::AbstractMatrix) =
+    Cholesky(exec!(alg, similar(A), A), uplo_char(alg), 0)
 cholesky!(alg::CholeskyFactorization, A::AbstractMatrix) =
     Cholesky(exec!(alg, A), uplo_char(alg), 0)
-
 cholesky!(alg::CholeskyFactorization, buf::AbstractMatrix, A::AbstractMatrix) =
     Cholesky(exec!(alg, buf, A), uplo_char(alg), 0)
 
@@ -316,7 +358,8 @@ uplo_char(::CholeskyUpper) = 'U'
 #------------------------------------------------------------------------------
 # Lower triangular Cholesky factorization.
 
-function exec!(alg::CholeskyLowerRowwiseI{opt},
+# Cholesky–Banachiewicz algorithm (row-wise).
+function exec!(alg::CholeskyBanachiewiczLowerI{opt},
                L::AbstractMatrix{T},
                A::AbstractMatrix{T}) where {T<:Floats,opt}
     n = check_chol_args(L, A)
@@ -330,7 +373,8 @@ function exec!(alg::CholeskyLowerRowwiseI{opt},
     return L
 end
 
-function exec!(alg::CholeskyLowerRowwiseII{opt},
+# Improved version of Cholesky–Banachiewicz algorithm (row-wise).
+function exec!(alg::CholeskyBanachiewiczLowerII{opt},
                L::AbstractMatrix{T},
                A::AbstractMatrix{T}) where {T<:Floats,opt}
     n = check_chol_args(L, A)
@@ -345,7 +389,8 @@ function exec!(alg::CholeskyLowerRowwiseII{opt},
     return L
 end
 
-function exec!(alg::CholeskyLowerColumnwise{opt},
+# Cholesky–Crout algorithm (column-wise).
+function exec!(alg::CholeskyCroutLower{opt},
                L::AbstractMatrix{T},
                A::AbstractMatrix{T}) where {T<:Floats,opt}
     n = check_chol_args(L, A)
@@ -362,7 +407,8 @@ end
 #------------------------------------------------------------------------------
 # Upper triangular Cholesky factorization.
 
-function exec!(alg::CholeskyUpperColumnwiseI{opt},
+# Cholesky–Crout algorithm (column-wise).
+function exec!(alg::CholeskyCroutUpperI{opt},
                R::AbstractMatrix{T},
                A::AbstractMatrix{T}) where {T<:Floats,opt}
     n = check_chol_args(R, A)
@@ -376,7 +422,8 @@ function exec!(alg::CholeskyUpperColumnwiseI{opt},
     return R
 end
 
-function exec!(alg::CholeskyUpperColumnwiseII{opt},
+# Cholesky–Crout algorithm (column-wise) improved version.
+function exec!(alg::CholeskyCroutUpperII{opt},
                R::AbstractMatrix{T},
                A::AbstractMatrix{T}) where {T<:Floats,opt}
     # Proceed column by column.
@@ -392,7 +439,8 @@ function exec!(alg::CholeskyUpperColumnwiseII{opt},
     return R
 end
 
-function exec!(alg::CholeskyUpperRowwise{opt},
+# Cholesky–Banachiewicz algorithm (row-wise).
+function exec!(alg::CholeskyBanachiewiczUpper{opt},
                R::AbstractMatrix{T},
                A::AbstractMatrix{T}) where {T<:Floats,opt}
     n = check_chol_args(R, A)
@@ -489,20 +537,20 @@ end
 function check_chol_args(L::AbstractMatrix, A::AbstractMatrix)
     require_one_based_indexing(L, A)
     inds = axes(A)
-    inds[1] == inds[2] ||
-        throw(DimensionMismatch("expecting a square matrix"))
-    axes(L) == inds ||
-        throw(DimensionMismatch("matrixes must have the same axes"))
+    inds[1] == inds[2] || throw_dimension_mismatch(
+        "expecting a square matrix")
+    axes(L) == inds || throw_dimension_mismatch(
+            "matrixes must have the same axes")
     return length(inds[1])
 end
 
 function check_ldiv_args(A::AbstractMatrix, b::AbstractVector)
     require_one_based_indexing(A, b)
     m, n = size(A)
-    m == n ||
-        throw(DimensionMismatch("A must be a square matrix"))
-    length(b) == n ||
-        throw(DimensionMismatch("sizes of A and b are incompatible"))
+    m == n || throw_dimension_mismatch(
+        "A must be a square matrix")
+    length(b) == n || throw_dimension_mismatch(
+        "sizes of A and b are incompatible")
     return Int(n)
 end
 
@@ -511,17 +559,26 @@ function check_ldiv_args(y::AbstractVector,
                          b::AbstractVector)
     require_one_based_indexing(y, A, b)
     m, n = size(A)
-    m == n ||
-        throw(DimensionMismatch("A must be a square matrix"))
-    length(y) == n ||
-        throw(DimensionMismatch("sizes of A and y are incompatible"))
-    length(b) == n ||
-        throw(DimensionMismatch("sizes of A and b are incompatible"))
+    m == n || throw_dimension_mismatch(
+        "A must be a square matrix")
+    length(y) == n || throw_dimension_mismatch(
+        "sizes of A and y are incompatible")
+    length(b) == n || throw_dimension_mismatch(
+        "sizes of A and b are incompatible")
     return Int(n)
 end
 
-require_one_based_indexing(A...) = has_offset_axes(A...) && throw(
-    ArgumentError("arrays must have 1-based indexing"))
+require_one_based_indexing(A...) =
+    has_offset_axes(A...) && throw_argument_error(
+        "arrays must have 1-based indexing")
+
+throw_argument_error(msg::AbstractString) = throw(ArgumentError(msg))
+@noinline throw_argument_error(args...) =
+    throw_argument_error(string(args...))
+
+throw_dimension_mismatch(msg::AbstractString) = throw(DimensionMismatch(msg))
+@noinline throw_dimension_mismatch(args...) =
+    throw_dimension_mismatch(string(args...))
 
 """
     is_unit_triangular(A)

@@ -1,20 +1,18 @@
 module TestingMayOptimizeLinearAlgebraMethods
 
+using Test
 using LinearAlgebra
 using MayOptimize
-using Test
-
 using MayOptimize:
     Standard,
     AVX
-
 using MayOptimize.LinearAlgebraMethods:
-    CholeskyLowerColumnwise,
-    CholeskyLowerRowwiseI,
-    CholeskyLowerRowwiseII,
-    CholeskyUpperColumnwiseI,
-    CholeskyUpperColumnwiseII,
-    CholeskyUpperRowwise,
+    CholeskyBanachiewiczLowerI,
+    CholeskyBanachiewiczLowerII,
+    CholeskyBanachiewiczUpper,
+    CholeskyCroutLower,
+    CholeskyCroutUpperI,
+    CholeskyCroutUpperII,
     exec!
 
 # Create an array initiallized with NaN's.
@@ -108,9 +106,9 @@ end
         @test Cs.L == C.L
         @test Cs.U == C.U
         for opt in (Debug, InBounds, Vectorize, AVX)
-            for Alg in (CholeskyLowerColumnwise,
-                        CholeskyLowerRowwiseI,
-                        CholeskyLowerRowwiseII)
+            for Alg in (CholeskyCroutLower,
+                        CholeskyBanachiewiczLowerI,
+                        CholeskyBanachiewiczLowerII)
                 alg = Alg(opt)
                 # Test out-of-place Cholesky factorization.  Checking the validity
                 # of the decomposition and that the strict upper part of L has been
@@ -126,9 +124,9 @@ end
                 @test L ≈ C.L
                 @test check((a,b,i,j) -> (i ≥ j || a === b), A, X)
             end
-            for Alg in (CholeskyUpperColumnwiseI,
-                        CholeskyUpperColumnwiseII,
-                        CholeskyUpperRowwise)
+            for Alg in (CholeskyCroutUpperI,
+                        CholeskyCroutUpperII,
+                        CholeskyBanachiewiczUpper)
                 alg = Alg(opt)
                 # Test out-of-place Cholesky factorization.  Checking the validity
                 # of the decomposition and that the strict lower part of R has been
