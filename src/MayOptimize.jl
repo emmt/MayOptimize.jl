@@ -12,12 +12,15 @@ include("types.jl")
 include("macros.jl")
 include("linalg.jl")
 import .LinearAlgebraMethods:
+    CholeskyBanachiewiczLower,
     CholeskyBanachiewiczLowerI,
     CholeskyBanachiewiczLowerII,
     CholeskyBanachiewiczUpper,
     CholeskyCroutLower,
+    CholeskyCroutUpper,
     CholeskyCroutUpperI,
     CholeskyCroutUpperII,
+    CholeskyFactorization,
     exec!
 
 end # module

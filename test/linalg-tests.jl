@@ -12,14 +12,15 @@ using MayOptimize:
     AVX
 using MayOptimize.LinearAlgebraMethods:
     AbstractAlgorithm,
-    AnyLowerTriangular,
-    AnyUpperTriangular,
+    CholeskyBanachiewiczLower,
     CholeskyBanachiewiczLowerI,
     CholeskyBanachiewiczLowerII,
     CholeskyBanachiewiczUpper,
     CholeskyCroutLower,
+    CholeskyCroutUpper,
     CholeskyCroutUpperI,
     CholeskyCroutUpperII,
+    CholeskyFactorization,
     CholeskyLower,
     CholeskyUpper,
     Floats,

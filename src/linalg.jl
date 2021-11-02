@@ -21,9 +21,9 @@ abstract type CholeskyLower{opt} <: CholeskyFactorization{opt} end
 abstract type CholeskyUpper{opt} <: CholeskyFactorization{opt} end
 
 # There are 2 variants to perform the Cholesky factorization
-# Cholesky-Banachiewicz (which proceeds row-size) and Cholesky-Banachiewicz
-# (which proceeds column-size) and they can be used to compute the L⋅L' or the
-# R'⋅R factorizations.
+# Cholesky-Banachiewicz (which proceeds row-size) and Cholesky-Crout (which
+# proceeds column-size) and they can be used to compute the L⋅L' or the R'⋅R
+# factorizations.
 struct CholeskyBanachiewiczLowerII{opt} <: CholeskyLower{opt} end
 struct CholeskyBanachiewiczLowerI{ opt} <: CholeskyLower{opt} end
 struct CholeskyBanachiewiczUpper{  opt} <: CholeskyUpper{opt} end
@@ -32,13 +32,14 @@ struct CholeskyCroutUpperII{       opt} <: CholeskyUpper{opt} end
 struct CholeskyCroutUpperI{        opt} <: CholeskyUpper{opt} end
 
 """
-     AnyLowerTriangular{T}
+     UntransposedLowerTriangular{T,S}
 
 is the union of lower triangular matrix types defined in Julia standard library
 `LinearAlgebra` and wrapped over regular matrices, that is
-`LowerTriangular{T,S}` and `UnitLowerTriangular{T,S}` with `S <:
-AbstractMatrix{T}`.  The matrix (of type `S`) backing the storage of the
-entries is given by calling the `parent` method.
+`LowerTriangular{T,S}` and `UnitLowerTriangular{T,S}` with `S` the type of an
+untransposed matrix type whose elements have type `T`.  The matrix (of type
+`S`) backing the storage of the entries is given by calling the `parent`
+method.
 
 For the parent, say `A`, of a lower-triangular matrix, only entries `A[i,j]`
 for `i ≥ j` shall be accessed.
@@ -47,18 +48,18 @@ For the parent, say `A`, of a unit lower-triangular matrix, only entries
 `A[i,j]` for `i > j` shall be accessed and `A[i,i] = 1` shall be assumed.
 
 """
-const AnyLowerTriangular{T} = Union{
-    LowerTriangular{T,<:AbstractMatrix{T}},
-    UnitLowerTriangular{T,<:AbstractMatrix{T}}}
+const UntransposedLowerTriangular{T,S<:AbstractMatrix{T}} = Union{
+    LowerTriangular{T,S},UnitLowerTriangular{T,S}}
 
 """
-     AnyUpperTriangular{T}
+     UntransposedUpperTriangular{T,S}
 
 is the union of upper triangular matrix types defined in standard Julia library
 `LinearAlgebra` and wrapped over regular matrices, that is
-`UpperTriangular{T,S}` and `UnitUpperTriangular{T,S}` with `S <:
-AbstractMatrix{T}`.  The matrix (of type `S`) backing the storage of the
-entries is given by calling the `parent` method.
+`UpperTriangular{T,S}` and `UnitUpperTriangular{T,S}` with `S` the type of an
+untransposed matrix type whose elements have type `T`.  The matrix (of type
+`S`) backing the storage of the entries is given by calling the `parent`
+method.
 
 For the parent, say `A`, of an upper-triangular matrix, only entries `A[i,j]`
 for `i ≤ j` shall be accessed.
@@ -67,9 +68,36 @@ For the parent, say `A`, of a unit upper-triangular matrix, only entries
 `A[i,j]` for `i < j` shall be accessed and `A[i,i] = 1` shall be assumed.
 
 """
-const AnyUpperTriangular{T} = Union{
-    UpperTriangular{T,<:AbstractMatrix{T}},
-    UnitUpperTriangular{T,<:AbstractMatrix{T}}}
+const UntransposedUpperTriangular{T,S<:AbstractMatrix{T}} = Union{
+    UpperTriangular{T,S},UnitUpperTriangular{T,S}}
+
+const TransposedLowerTriangular{T,S<:AbstractMatrix{T}} = Union{
+    Adjoint{T,<:LowerTriangular{T,S}},
+    Transpose{T,<:LowerTriangular{T,S}},
+    Adjoint{T,<:UnitLowerTriangular{T,S}},
+    Transpose{T,<:UnitLowerTriangular{T,S}},
+    UpperTriangular{T,Adjoint{T,S}},
+    UpperTriangular{T,Transpose{T,S}},
+    UnitUpperTriangular{T,Adjoint{T,S}},
+    UnitUpperTriangular{T,Transpose{T,S}}}
+
+const TransposedUpperTriangular{T,S<:AbstractMatrix{T}} = Union{
+    Adjoint{T,<:UpperTriangular{T,S}},
+    Transpose{T,<:UpperTriangular{T,S}},
+    Adjoint{T,<:UnitUpperTriangular{T,S}},
+    Transpose{T,<:UnitUpperTriangular{T,S}},
+    LowerTriangular{T,Adjoint{T,S}},
+    LowerTriangular{T,Transpose{T,S}},
+    UnitLowerTriangular{T,Adjoint{T,S}},
+    UnitLowerTriangular{T,Transpose{T,S}}}
+
+const TransposedTriangular{T,S<:AbstractMatrix{T}} = Union{
+    TransposedLowerTriangular{T,S},
+    TransposedUpperTriangular{T,S}}
+
+const UntransposedTriangular{T,S<:AbstractMatrix{T}} = Union{
+    UntransposedLowerTriangular{T,S},
+    UntransposedUpperTriangular{T,S}}
 
 default_optimization(::Type{<:AbstractAlgorithm}) = InBounds
 
@@ -98,6 +126,13 @@ CholeskyFactorization(opt::Type{<:OptimLevel}) =
     BestCholeskyFactorization(opt)
 CholeskyFactorization{opt}() where {opt<:OptimLevel} =
     BestCholeskyFactorization{opt}()
+
+# Alias to the fastest Cholesky-Banachiewicz algorithm for the L'⋅L
+# factorization.
+const CholeskyBanachiewiczLower = CholeskyBanachiewiczLowerII
+
+# Alias to the fastest Cholesky-Crout algorithm for the R⋅R' factorization.
+const CholeskyCroutUpper = CholeskyCroutUpperII
 
 const Floats = Union{AbstractFloat,Complex{<:AbstractFloat}}
 
@@ -140,12 +175,13 @@ if VERSION < v"1.4.0-rc1"
         return ldiv!(A, Y)
     end
 end
+
 #
 # Store A\b in y for A triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
-               A::AbstractTriangular{T},
+               A::UntransposedTriangular{T},
                b::AbstractVector{T}) where {T<:Floats}
     y === b || copyto!(y, b)
     return ldiv!(opt, A, y)
@@ -155,7 +191,7 @@ end
 # Store A\b in b for A upper triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
-               A::AnyUpperTriangular{T},
+               A::UntransposedUpperTriangular{T},
                b::AbstractVector{T}) where {T<:Floats}
     R = parent(A) # to avoid getindex overheads
     n = check_ldiv_args(R, b)
@@ -176,7 +212,7 @@ end
 # Store A\b in b for A lower triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
-               A::AnyLowerTriangular{T},
+               A::UntransposedLowerTriangular{T},
                b::AbstractVector{T}) where {T<:Floats}
     L = parent(A) # to avoid getindex overheads
     n = check_ldiv_args(L, b)
@@ -197,12 +233,11 @@ end
 # Store A'\b in b for A upper triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
-               A::Union{Adjoint{T,S},Transpose{T,S}},
-               b::AbstractVector{T}) where {T<:Floats,
-                                            S<:AnyUpperTriangular{T}}
+               A::TransposedUpperTriangular{T},
+               b::AbstractVector{T}) where {T<:Floats}
     R = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(R, b)
-    f = conjugate_or_identity(A)
+    f = elementwise_function(A)
     @maybe_inbounds opt for j ∈ 1:n
         temp = b[j]
         @maybe_vectorized opt for i ∈ 1:j-1
@@ -218,12 +253,11 @@ end
 
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
-               A::Union{Adjoint{T,S},Transpose{T,S}},
-               b::AbstractVector{T}) where {T<:Floats,
-                                            S<:AnyUpperTriangular{T}}
+               A::TransposedUpperTriangular{T},
+               b::AbstractVector{T}) where {T<:Floats}
     R = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(y, R, b)
-    f = conjugate_or_identity(A)
+    f = elementwise_function(A)
     @maybe_inbounds opt for j ∈ 1:n
         temp = b[j]
         @maybe_vectorized opt for i ∈ 1:j-1
@@ -240,12 +274,11 @@ end
 # Store A'\b in b for A lower triangular.
 #
 function ldiv!(opt::Type{<:OptimLevel},
-               A::Union{Adjoint{T,S},Transpose{T,S}},
-               b::AbstractVector{T}) where {T<:Floats,
-                                            S<:AnyLowerTriangular{T}}
+               A::TransposedLowerTriangular{T},
+               b::AbstractVector{T}) where {T<:Floats}
     L = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(L, b)
-    f = conjugate_or_identity(A)
+    f = elementwise_function(A)
     @maybe_inbounds opt for j ∈ n:-1:1
         temp = b[j]
         @maybe_vectorized opt for i ∈ n:-1:j+1
@@ -261,12 +294,11 @@ end
 
 function ldiv!(opt::Type{<:OptimLevel},
                y::AbstractVector{T},
-               A::Union{Adjoint{T,S},Transpose{T,S}},
-               b::AbstractVector{T}) where {T<:Floats,
-                                            S<:AnyLowerTriangular{T}}
+               A::TransposedLowerTriangular{T},
+               b::AbstractVector{T}) where {T<:Floats}
     L = parent(parent(A)) # to avoid getindex overheads
     n = check_ldiv_args(y, L, b)
-    f = conjugate_or_identity(A)
+    f = elementwise_function(A)
     @maybe_inbounds opt for j ∈ n:-1:1
         temp = b[j]
         @maybe_vectorized opt for i ∈ n:-1:j+1
@@ -330,21 +362,70 @@ destination `dst`.
 # Cholesky factorization can be done in-place.
 exec!(alg::CholeskyFactorization, A::AbstractMatrix) = exec!(alg, A, A)
 
-# Call standard Cholesky method.
-cholesky(::Type{<:Standard}, A::AbstractMatrix, args...; kwds...) =
-    cholesky(A, args...; kwds...)
-cholesky!(::Type{<:Standard}, A::AbstractMatrix, args...; kwds...) =
-    cholesky!(A, args...; kwds...)
+"""
+    cholesky(alg, A) -> C
 
-# Call default Cholesky method.
+yields Cholesky factorization of matrix `A` using optimization level and/or
+algorithm specified by `alg`.  For example, `alg` can be:
+
+- `InBounds` or `Vectorize` to perform the fastest factorization without bounds
+  checking or with loop vectorization respectively;
+
+- `CholeskyBanachiewiczLower(Vectorize)` to use Cholesky-Banachiewicz algorithm
+  with loop vectorization to compute the `L'⋅L` Cholesky factorization with `L`
+  lower triangular;
+
+- `CholeskyCroutUpper()` to use Cholesky-Crout algorithm with default
+  optimization level to compute the `R⋅R'` Cholesky factorization with `R` upper
+  triangular.
+
+""" cholesky
+
+"""
+    cholesky!(alg, [buf,] A) -> C
+
+yields Cholesky factorization of matrix `A` using optimization level and/or
+algorithm specified by `alg`.  If argument `buf` is specified, the Cholesky
+factorization is written in `buf` leaving `A` unchanged (unless `buf === A`);
+otherwise, `A` is overwritten with the Cholesky factorization.
+
+""" cholesky!
+
+# Execute Cholesky method given optimization instance.
+cholesky(opt::OptimLevel, A::AbstractMatrix) =
+    cholesky(typeof(opt), A)
+cholesky!(opt::OptimLevel, A::AbstractMatrix) =
+    cholesky!(typeof(opt), A)
+cholesky!(opt::OptimLevel, buf::AbstractMatrix, A::AbstractMatrix) =
+    cholesky!(typeof(opt), buf, A)
+
+# Call standard Cholesky method.
+cholesky(::Type{<:Standard}, A::AbstractMatrix; kwds...) =
+    cholesky(A, Val(false); kwds...)
+cholesky!(::Type{<:Standard}, A::AbstractMatrix; kwds...) =
+    cholesky!(A, Val(false); kwds...)
+cholesky!(::Type{<:Standard}, buf::AbstractMatrix, A::AbstractMatrix; kwds...) =
+    cholesky!(copyto!(buf, A), Val(false); kwds...)
+
+# Call default Cholesky method given optimization type.
 cholesky(opt::Type{<:OptimLevel}, A::AbstractMatrix) =
     cholesky(CholeskyFactorization(opt), A)
 cholesky!(opt::Type{<:OptimLevel}, A::AbstractMatrix) =
     cholesky!(CholeskyFactorization(opt), A)
 cholesky!(opt::Type{<:OptimLevel}, buf::AbstractMatrix, A::AbstractMatrix) =
-    cholesky!(CholeskyFactorization(opt), buf, A)
+    cholesky!(CholeskyFactorization{opt}, buf, A)
 
-# Call specific Cholesky method.
+# Call specific Cholesky method given algorithm type.
+cholesky(alg::Type{<:CholeskyFactorization}, A::AbstractMatrix) =
+    cholesky(alg(), A)
+cholesky!(alg::Type{<:CholeskyFactorization}, A::AbstractMatrix) =
+    cholesky!(alg(), A)
+function cholesky!(alg::Type{<:CholeskyFactorization}, buf::AbstractMatrix,
+                   A::AbstractMatrix)
+    return cholesky!(alg(), buf, A)
+end
+
+# Call specific Cholesky method given aklgorithm instance.
 cholesky(alg::CholeskyFactorization, A::AbstractMatrix) =
     Cholesky(exec!(alg, similar(A), A), uplo_char(alg), 0)
 cholesky!(alg::CholeskyFactorization, A::AbstractMatrix) =
@@ -352,8 +433,9 @@ cholesky!(alg::CholeskyFactorization, A::AbstractMatrix) =
 cholesky!(alg::CholeskyFactorization, buf::AbstractMatrix, A::AbstractMatrix) =
     Cholesky(exec!(alg, buf, A), uplo_char(alg), 0)
 
-uplo_char(::CholeskyLower) = 'L'
-uplo_char(::CholeskyUpper) = 'U'
+uplo_char(alg::CholeskyFactorization) = uplo_char(typeof(alg))
+uplo_char(::Type{<:CholeskyLower}) = 'L'
+uplo_char(::Type{<:CholeskyUpper}) = 'U'
 
 #------------------------------------------------------------------------------
 # Lower triangular Cholesky factorization.
@@ -588,7 +670,7 @@ is type-stable and is directly inferred from the type of `A`.  The argument can
 also be a matrix type.
 
 """
-is_unit_triangular(::T) where {T<:AbstractMatrix} = is_unit_triangular(T)
+is_unit_triangular(A::AbstractMatrix) = is_unit_triangular(typeof(A))
 is_unit_triangular(::Type{<:Adjoint{T,S}}) where {T,S} = is_unit_triangular(S)
 is_unit_triangular(::Type{<:Transpose{T,S}}) where {T,S} = is_unit_triangular(S)
 is_unit_triangular(::Type{<:UnitLowerTriangular}) = true
@@ -596,17 +678,16 @@ is_unit_triangular(::Type{<:UnitUpperTriangular}) = true
 is_unit_triangular(::Type{<:AbstractMatrix}) = false
 
 """
-    conjugate_or_identity(A)
+    elementwise_function(A)
 
 yields `conj` if multiplying or dividing by the matrix `A` requires to take the
 conjugate of the values of the object backing the storage of the entries of
 `A`; otherwise yields `identity`.
 
 """
-conjugate_or_identity(::Adjoint{<:Real}) = identity
-conjugate_or_identity(::Adjoint{<:Complex}) = conj
-conjugate_or_identity(::Transpose{<:Real}) = identity
-conjugate_or_identity(::Transpose{<:Complex}) = identity
-conjugate_or_identity(::AbstractMatrix) = identity
+elementwise_function(A::AbstractMatrix) = elementwise_function(typeof(A))
+elementwise_function(::Type{<:Adjoint}) = conj
+elementwise_function(::Type{<:AbstractTriangular{<:Any,<:Adjoint}}) = conj
+elementwise_function(::Type{<:AbstractMatrix}) = identity
 
 end # module
