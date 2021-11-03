@@ -1,7 +1,7 @@
 name = "MayOptimize"
 uuid = "049513e6-5a5e-4281-9d48-334ebac8954e"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
