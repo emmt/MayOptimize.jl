@@ -112,8 +112,11 @@ No other packages are needed.
 
 ## Examples
 
+### Left divison by a triangular matrix
+
 `MayOptimize` extends a few base linear algebra methods such as the `ldiv!`
-method which performs left division by a matrix `A` and can be called as:
+method to perform the left division of a vector `b` by a matrix `A` and can be
+called as:
 
 ```julia
 using MayOptimize, LinearAlgebra
@@ -124,15 +127,15 @@ ldiv!(opt, y, A, b)
 In the first case, the operation is done in-place and `b` is overwritten with
 `A\b`, in the second case, `A\b` is stored in `y`.  Argument `opt` can be
 `MayOptimize.Standard` to use Julia standard method (probably BLAS), `Debug`,
-`InBounds` or `Vectorize` to compile Julia code in `MayOptimize` with different
-optimization settings.  The following figures (obtained with Julia 1.5.3 on an
-AMD Ryzen Threadripper 2950X 16-Core processor) show how efficient can be Julia
-code when compiled with well chosen optimization settings (note the 1.7 gain
-compared to the standard implementation when `@simd` is used in the innermost
-loop level).  Having a look at [`src/linalg.jl`](src/linalg.jl), you can
-realize that the code is identical for the `Debug`, `InBounds` or `Vectorize`
-settings (only the `opt` argument changes) and that this code turns out to be
-pretty straightforward.
+`InBounds`, or `Vectorize` to compile Julia code in `MayOptimize` with
+different optimization settings.  The following figures (obtained with Julia
+1.6.3 on an AMD Ryzen Threadripper 2950X 16-Core processor) show how efficient
+can be Julia code when compiled with well chosen optimization settings (note
+the 1.7 gain compared to the standard implementation when `@simd` is used in
+the innermost loop level).  Having a look at [`src/linalg.jl`](src/linalg.jl),
+you can realize that the code is identical for the `Debug`, `InBounds` or
+`Vectorize` settings (only the `opt` argument changes) and that this code turns
+out to be pretty straightforward.
 
 ![Left division by a lower triangular matrix](figs/ldiv-L-median.png "")
 
@@ -141,6 +144,54 @@ pretty straightforward.
 ![Left division by an upper triangular matrix](figs/ldiv-R-median.png "")
 
 ![Left division by the transpose of an upper triangular matrix](figs/ldiv-Rt-median.png "")
+
+
+### Cholesky decomposition
+
+`MayOptimize` also extends the `cholesky` and `cholesky!` methods to perform
+the Cholesky decomposition (without pivoting) of an Hermitian matrix `A` by
+regular Julia code and with optimization level `opt`:
+
+```julia
+using MayOptimize, LinearAlgebra
+cholesky!(opt, A)
+B = cholesky(opt, A)
+```
+
+In the first case, the decomposition is done in-place and the uopper or lower
+triangular part of `A` is overwritten with one factor of its Cholesky
+decomposition which is returned.  In the second case, `A` is left unchanged.
+Apart from the `opt` argument (which also avoids *type-piracy*) and rounding
+errors, the result is the same as with the standard method provided by
+`LinearAlgebra` and which calls BLAS.  As illustrated below, the Julia code may
+be much faster than BLAS for matrices of size smaller or equal 200×200 in spite
+of the fact that BLAS may run on several threads whereas the optimized Julia
+code is executed on a single thread.
+
+The `opt` argument specifies the optimization level (`Debug`, `InBounds`, or
+`Vectorize`) and/or the algorithm used for the decomposition
+(`CholeskyBanachiewiczLowerI`, `CholeskyBanachiewiczLowerII`,
+`CholeskyBanachiewiczUpper`, `CholeskyCroutLower`, `CholeskyCroutUpperI`, or
+`CholeskyCroutUpperII`).  For instance, choose `op` to be
+`CholeskyBanachiewiczLower(Vectorize)` to compute the `L'⋅L` Cholesky
+factorization with `L` lower triangular by the Cholesky-Banachiewicz (row-size)
+algorithm with loop vectorization.  If only an algorithm is specified without
+optimization level, the best optimization level for this algorithm is used.
+Conversely, if only the optimization level is specified, the fastest algorithm
+is used.  However these default choices are optimal for a testing machine
+which may be different than yours.
+
+The following figures (obtained with Julia 1.6.3 with `Float32` values on an
+AMD Ryzen Threadripper 2950X 16-Core processor) show how efficient can be Julia
+code when compiled with well chosen optimization settings (note the 200% gain
+compared to the BLAS implementation when `@simd` is used in the innermost loop
+levels for 100×100 matrices).
+
+![Cholesky decomposition with no optimization](figs/cholesky-debug-median.png "")
+
+![Cholesky decomposition with in-bounds optimization](figs/cholesky-inbounds-median.png "")
+
+![Cholesky decomposition with SIMD vectorization](figs/cholesky-vectorize-median.png "")
 
 
 [repository-url]:  https://github.com/emmt/MayOptimize.jl
