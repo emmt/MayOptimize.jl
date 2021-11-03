@@ -2,10 +2,9 @@ module TestingMayOptimizeMacros
 
 using Test, LinearAlgebra
 using MayOptimize
+using MayOptimize: Standard, CodeChoice
 
-# Singleton type to use version provided by Julia.
-struct Basic end
-struct Dummy <: MayOptimize.OptimLevel end
+struct Dummy <: OptimLevel end
 
 function sum_inbounds(::Type{P},
                       x::AbstractVector{T}) where {T<:AbstractFloat,
@@ -13,30 +12,6 @@ function sum_inbounds(::Type{P},
     s = zero(T)
     @maybe_inbounds P for i in eachindex(x)
         s += x[i]
-    end
-    return s
-end
-
-Base.sum(::Type{Basic}, x::AbstractArray) = sum(x)
-
-function Base.sum(::Type{P},
-                  x::AbstractArray{<:AbstractFloat}) where {P<:OptimLevel}
-    s = zero(eltype(x))
-    @maybe_vectorized P for i in eachindex(x)
-        s += x[i]
-    end
-    return s
-end
-
-LinearAlgebra.dot(::Type{Basic}, x::AbstractVector, y::AbstractVector) = dot(x, y)
-
-function LinearAlgebra.dot(::Type{P},
-                           x::AbstractVector{T},
-                           y::AbstractVector{T}) where {T<:AbstractFloat,
-                                                        P<:OptimLevel}
-    s = zero(T)
-    @maybe_vectorized P for i in eachindex(x, y)
-        s += x[i]*y[i]
     end
     return s
 end
@@ -79,11 +54,11 @@ dims = (10_000,)
         @test sum_inbounds(Debug, x) ≈ sum(x)
         @test sum_inbounds(InBounds, x) ≈ sum(x)
         @test sum_inbounds(Vectorize, x) ≈ sum(x)
-        @test sum(Basic, x) == sum(x)
+        @test sum(Standard, x) == sum(x)
         @test sum(Debug, x) ≈ sum(x)
         @test sum(InBounds, x) ≈ sum(x)
         @test sum(Vectorize, x) ≈ sum(x)
-        @test dot(Basic, x, y) == dot(x,y)
+        @test dot(Standard, x, y) == dot(x,y)
         @test dot(Debug, x, y) ≈ dot(x,y)
         @test dot(InBounds, x, y) ≈ dot(x,y)
         @test dot(Vectorize, x, y) ≈ dot(x,y)
