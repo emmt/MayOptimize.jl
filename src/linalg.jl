@@ -316,11 +316,12 @@ function ldiv!(opt::Type{<:OptimLevel},
                A::Cholesky{T},
                b::AbstractVector{T}) where{T}
     uplo = getfield(A, :uplo)
+    fact = getfield(A, :factors)
     if uplo === 'U'
-        R = A.U
+        R = UpperTriangular(fact) # A.U
         ldiv!(opt, R, ldiv!(opt, R', b))
     elseif uplo === 'L'
-        L = A.L
+        L = LowerTriangular(fact) # A.L
         ldiv!(opt, L', ldiv!(opt, L, b))
     else
         throw_bad_uplo_field(A)
@@ -333,11 +334,12 @@ function ldiv!(opt::Type{<:OptimLevel},
                A::Cholesky{T},
                b::AbstractVector{T}) where{T}
     uplo = getfield(A, :uplo)
+    fact = getfield(A, :factors)
     if uplo === 'U'
-        R = A.U
+        R = UpperTriangular(fact) # A.U
         ldiv!(opt, R, ldiv!(opt, y, R', b))
     elseif uplo === 'L'
-        L = A.L
+        L = LowerTriangular(fact) # A.L
         ldiv!(opt, L', ldiv!(opt, y, L, b))
     else
         throw_bad_uplo_field(A)
