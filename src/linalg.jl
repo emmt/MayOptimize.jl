@@ -317,10 +317,10 @@ function ldiv!(opt::Type{<:OptimLevel},
                b::AbstractVector{T}) where{T}
     uplo = getfield(A, :uplo)
     if uplo === 'U'
-        R = getfield(A, :factors)
+        R = A.U
         ldiv!(opt, R, ldiv!(opt, R', b))
     elseif uplo === 'L'
-        L = getfield(A, :factors)
+        L = A.L
         ldiv!(opt, L', ldiv!(opt, L, b))
     else
         throw_bad_uplo_field(A)
@@ -334,10 +334,10 @@ function ldiv!(opt::Type{<:OptimLevel},
                b::AbstractVector{T}) where{T}
     uplo = getfield(A, :uplo)
     if uplo === 'U'
-        R = getfield(A, :factors)
+        R = A.U
         ldiv!(opt, R, ldiv!(opt, y, R', b))
     elseif uplo === 'L'
-        L = getfield(A, :factors)
+        L = A.L
         ldiv!(opt, L', ldiv!(opt, y, L, b))
     else
         throw_bad_uplo_field(A)
