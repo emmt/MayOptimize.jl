@@ -1,17 +1,5 @@
 # Visible changes in `MayOptimize` package
 
-## Wish list for future developments
-
-* Extend other linear algebra methods.
-
-
-## Version 0.2.3
-
-* Simplify and generalize `vfill!` and `vzero!` to be able to work with
-  `Unitful` elements.
-
-* Automatically specialize `multiplier_type` for `Unitful.AbstractQuantity`.
-
 ## Version 0.3.0
 
 * Methods `ldiv!`, `cholesky`, and `cholesky!` provided by the `LinearAlgebra`
