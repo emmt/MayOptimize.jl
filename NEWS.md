@@ -1,5 +1,9 @@
 # Visible changes in `MayOptimize` package
 
+## Version 0.3.2
+
+* Fix bugs in `ldiv!` by Cholesky decomposition.
+
 ## Version 0.3.0
 
 * Methods `ldiv!`, `cholesky`, and `cholesky!` provided by the `LinearAlgebra`
