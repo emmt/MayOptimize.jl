@@ -1,7 +1,7 @@
 # Conditionally optimize Julia code
 
 [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](./LICENSE.md)
-[![Build Status](https://github.com/emmt/MayOptimze.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/MayOptimze.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Build Status](https://github.com/emmt/MayOptimize.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/MayOptimize.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/MayOptimize.jl?branch=master)](https://ci.appveyor.com/project/emmt/MayOptimize-jl/branch/master)
 [![Coverage](https://coveralls.io/repos/emmt/MayOptimize.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/emmt/MayOptimize.jl?branch=master)
 
