@@ -3,8 +3,7 @@
 [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](./LICENSE.md)
 [![Build Status](https://github.com/emmt/MayOptimize.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/MayOptimize.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/MayOptimize.jl?branch=master)](https://ci.appveyor.com/project/emmt/MayOptimize-jl/branch/master)
-[![Coverage](https://coveralls.io/repos/emmt/MayOptimize.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/emmt/MayOptimize.jl?branch=master)
-
+[![Coverage](https://codecov.io/gh/emmt/MayOptimize.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/emmt/MayOptimize.jl)
 
 When writing high performance [Julia][julia-url] code, you may want to keep a
 reference code that perform bound checking, another version that assumes valid
