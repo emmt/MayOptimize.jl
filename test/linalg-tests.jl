@@ -134,7 +134,15 @@ function cholesky_tests(;
             x = 2*rand(T, n) .- 1
             y = A*x
             z = Array{T}(undef, n)
-            for opt in opts
+            std = false
+            for opt in (Standard, opts...)
+                if opt === Standard
+                    if std
+                        continue
+                    else
+                        std = true
+                    end
+                end
                 Cs = cholesky(opt, A)
                 if opt === Standard
                     @test Cs.L == C.L
@@ -143,8 +151,8 @@ function cholesky_tests(;
                     @test Cs.L ≈ C.L
                     @test Cs.U ≈ C.U
                 end
-                @test ldiv!(z, Cs, y) ≈ x
-                @test ldiv!(Cs, copyto!(z, y)) ≈ x
+                @test ldiv!(opt, z, Cs, y) ≈ x
+                @test ldiv!(opt, Cs, copyto!(z, y)) ≈ x
             end
             for opt in opts, algtype in algs
                 if algtype <: CholeskyLower

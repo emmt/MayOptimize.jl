@@ -344,7 +344,7 @@ function ldiv!(opt::Type{<:OptimLevel},
     else
         throw_bad_uplo_field(A)
     end
-    return b
+    return y
 end
 
 @noinline throw_bad_uplo_field(A::Cholesky) = error(
