@@ -1,8 +1,10 @@
 # Conditionally optimize Julia code
 
-| **License**                     | **Build Status**                                                | **Code Coverage**                                                   |
-|:--------------------------------|:----------------------------------------------------------------|:--------------------------------------------------------------------|
-| [![][license-img]][license-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
+[![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](./LICENSE.md)
+[![Build Status](https://github.com/emmt/MayOptimze.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/MayOptimze.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/MayOptimize.jl?branch=master)](https://ci.appveyor.com/project/emmt/MayOptimize-jl/branch/master)
+[![Coverage](https://coveralls.io/repos/emmt/MayOptimize.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/emmt/MayOptimize.jl?branch=master)
+
 
 When writing high performance [Julia][julia-url] code, you may want to keep a
 reference code that perform bound checking, another version that assumes valid
@@ -195,24 +197,6 @@ levels for 100×100 matrices).
 
 
 [repository-url]:  https://github.com/emmt/MayOptimize.jl
-
-[doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[doc-dev-url]: https://emmt.github.io/MayOptimize.jl/dev
-
-[license-url]: ./LICENSE.md
-[license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
-
-[travis-img]: https://travis-ci.com/emmt/MayOptimize.jl.svg?branch=master
-[travis-url]: https://travis-ci.com/emmt/MayOptimize.jl
-
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/MayOptimize.jl?branch=master
-[appveyor-url]: https://ci.appveyor.com/project/emmt/MayOptimize-jl/branch/master
-
-[coveralls-img]: https://coveralls.io/repos/emmt/MayOptimize.jl/badge.svg?branch=master&service=github
-[coveralls-url]: https://coveralls.io/github/emmt/MayOptimize.jl?branch=master
-
-[codecov-img]: http://codecov.io/github/emmt/MayOptimize.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/emmt/MayOptimize.jl?branch=master
 
 [julia-url]: https://julialang.org/
 [julia-pkgs-url]: https://pkg.julialang.org/

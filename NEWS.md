@@ -4,6 +4,10 @@
 
 * Fix bugs in `ldiv!` by Cholesky decomposition.
 
+## Version 0.3.1
+
+* Fix dependencies.
+
 ## Version 0.3.0
 
 * Methods `ldiv!`, `cholesky`, and `cholesky!` provided by the `LinearAlgebra`
@@ -30,7 +34,6 @@
 ## Version 0.2.1
 
 * Code cleanup.
-
 
 ## Version 0.2.0
 
