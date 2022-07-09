@@ -134,9 +134,18 @@ function cholesky_tests(;
             x = 2*rand(T, n) .- 1
             y = A*x
             z = Array{T}(undef, n)
-            Cs = cholesky(Standard, A)
-            @test Cs.L == C.L
-            @test Cs.U == C.U
+            for opt in opts
+                Cs = cholesky(opt, A)
+                if opt === Standard
+                    @test Cs.L == C.L
+                    @test Cs.U == C.U
+                else
+                    @test Cs.L ≈ C.L
+                    @test Cs.U ≈ C.U
+                end
+                @test ldiv!(z, Cs, y) ≈ x
+                @test ldiv!(Cs, copyto!(z, y)) ≈ x
+            end
             for opt in opts, algtype in algs
                 if algtype <: CholeskyLower
                     alg = algtype(opt)
