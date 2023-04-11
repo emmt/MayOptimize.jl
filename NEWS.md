@@ -1,5 +1,10 @@
 # Visible changes in `MayOptimize` package
 
+## Version 0.3.3
+
+* Replace abstract type `LinearAlgebra.AbstractTriangular` by union
+  `Triangular` to anticipate a change in `LinearAlgebra`.
+
 ## Version 0.3.2
 
 * Fix bugs in `ldiv!` by Cholesky decomposition.

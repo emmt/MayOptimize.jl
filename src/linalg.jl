@@ -678,7 +678,7 @@ is_unit_triangular(::Type{<:UnitLowerTriangular}) = true
 is_unit_triangular(::Type{<:UnitUpperTriangular}) = true
 is_unit_triangular(::Type{<:AbstractMatrix}) = false
 
-const _Triangular{T,S} =
+const Triangular{T,S} =
     Union{LowerTriangular{T,S},
             UnitLowerTriangular{T,S},
             UpperTriangular{T,S},
@@ -694,7 +694,7 @@ conjugate of the values of the object backing the storage of the entries of
 """
 elementwise_function(A::AbstractMatrix) = elementwise_function(typeof(A))
 elementwise_function(::Type{<:Adjoint}) = conj
-elementwise_function(::Type{<:_Triangular{<:Any,<:Adjoint}}) = conj
+elementwise_function(::Type{<:Triangular{<:Any,<:Adjoint}}) = conj
 elementwise_function(::Type{<:AbstractMatrix}) = identity
 
 end # module
