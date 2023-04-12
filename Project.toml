@@ -4,7 +4,6 @@ authors = ["Éric Thiébaut <https://github.com/emmt>"]
 version = "0.3.3"
 
 [deps]
-HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
